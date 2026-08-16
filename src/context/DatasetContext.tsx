@@ -73,14 +73,12 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     const handleUserChange = () => {
       const newUserId = getActiveUserId();
-      if (newUserId !== userId) {
-        setUserId(newUserId);
-        // Load fresh data for the new user
-        const { datasets: ds, customData: cd, uploadHistory: hist } = loadForUser();
-        setDatasets(ds);
-        setCustomData(cd);
-        setUploadHistory(hist);
-      }
+      // Always reload — don't compare against stale state
+      setUserId(newUserId);
+      const { datasets: ds, customData: cd, uploadHistory: hist } = loadForUser();
+      setDatasets(ds);
+      setCustomData(cd);
+      setUploadHistory(hist);
     };
 
     window.addEventListener('insightai_user_updated', handleUserChange);
@@ -89,7 +87,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
       window.removeEventListener('insightai_user_updated', handleUserChange);
       window.removeEventListener('storage', handleUserChange);
     };
-  }, [userId]);
+  }, []);
 
   // Persist datasets metadata — scoped to the current user
   useEffect(() => {

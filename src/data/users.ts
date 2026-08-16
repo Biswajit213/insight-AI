@@ -2,9 +2,11 @@ import type { User } from '../types';
 
 export function getCurrentUser(): User {
   const savedEmail = localStorage.getItem('insightai_user_email');
+  const savedToken = localStorage.getItem('insightai_token');
   let savedName = localStorage.getItem('insightai_user_name');
+  const savedAvatar = localStorage.getItem('insightai_user_avatar') || undefined;
 
-  if (savedEmail) {
+  if (savedEmail && savedToken) {
     if (!savedName) {
       const namePart = savedEmail.split('@')[0].replace(/[._-]/g, ' ');
       if (namePart) {
@@ -12,9 +14,10 @@ export function getCurrentUser(): User {
       }
     }
     return {
-      id: 'u1',
+      id: savedToken,
       name: savedName || 'Analytics User',
       email: savedEmail,
+      avatar: savedAvatar,
       company: 'Acme Corporation',
       role: 'Senior Data Analyst',
       plan: 'pro',
@@ -22,9 +25,9 @@ export function getCurrentUser(): User {
     };
   }
 
-  // Fallback default guest user if no session email is in localStorage
+  // Fallback default guest user if no session in localStorage
   return {
-    id: 'u1',
+    id: 'guest',
     name: 'Guest Analyst',
     email: 'guest@insightai.io',
     company: 'Acme Corporation',
@@ -35,7 +38,7 @@ export function getCurrentUser(): User {
 }
 
 const defaultUser: User = {
-  id: 'u1',
+  id: 'guest',
   name: 'Guest Analyst',
   email: 'guest@insightai.io',
   company: 'Acme Corporation',

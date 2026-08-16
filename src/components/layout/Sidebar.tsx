@@ -149,9 +149,18 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           aria-label="View profile"
         >
           {/* Avatar */}
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {getInitials(user.name)}
-          </div>
+          {user.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.name}
+              referrerPolicy="no-referrer"
+              className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-1 ring-blue-500/40"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              {getInitials(user.name)}
+            </div>
+          )}
 
           {!collapsed && (
             <div className="flex-1 min-w-0">

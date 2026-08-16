@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { User, Shield, Bell, Palette } from 'lucide-react';
 import { AppLayout } from './components/layout/AppLayout';
@@ -10,6 +10,56 @@ import { Header } from './components/layout/Header';
 import { ProfileSettings, SecuritySettings, AppearanceSettings } from './pages/Settings';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { cn } from './lib/utils';
+import { supabase } from './lib/supabase';
+
+/**
+ * AuthCallback — handles the Supabase OAuth redirect.
+ * Supabase appends #access_token=... to the redirect URL.
+ * This component waits for supabase to parse the hash and establish a session,
+ * then navigates to /app (dashboard).
+ */
+function AuthCallback() {
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // getSession() triggers Supabase to parse the URL hash and exchange the code
+    supabase.auth.getSession().then(({ data: { session }, error: err }) => {
+      if (err) {
+        setError(err.message);
+        return;
+      }
+      if (session) {
+        // Session established — navigate to dashboard
+        navigate('/app', { replace: true });
+      } else {
+        // No session found after callback — send back to login
+        navigate('/login', { replace: true });
+      }
+    });
+  }, [navigate]);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#0b1120] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <p className="text-rose-400 text-sm font-medium">Authentication failed</p>
+          <p className="text-slate-500 text-xs">{error}</p>
+          <a href="/login" className="text-blue-400 text-xs hover:underline">Back to login</a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0b1120] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs text-slate-500">Completing sign in…</p>
+      </div>
+    </div>
+  );
+}
 
 // Public Marketing Pages
 const Home = lazy(() => import('./pages/Home'));
@@ -101,6 +151,8 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                {/* OAuth callback — Supabase redirects here after Google login */}
+                <Route path="/auth/callback" element={<AuthCallback />} />
 
                 {/* PROTECTED APPLICATION WORKSPACE (/app) */}
                 <Route

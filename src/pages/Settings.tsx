@@ -51,10 +51,24 @@ export function ProfileSettings() {
       {/* Avatar */}
       <div className="flex items-center gap-5 mb-6 pb-6 border-b border-slate-100 dark:border-slate-800">
         <div className="relative">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-xl font-bold">
-            {getInitials(name)}
-          </div>
-          <button className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow transition-colors" aria-label="Change avatar">
+          {user.avatar ? (
+            /* Real Google profile photo */
+            <img
+              src={user.avatar}
+              alt={name}
+              referrerPolicy="no-referrer"
+              className="w-16 h-16 rounded-full object-cover ring-2 ring-blue-500/40"
+            />
+          ) : (
+            /* Fallback initials avatar */
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-xl font-bold">
+              {getInitials(name)}
+            </div>
+          )}
+          <button
+            className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow transition-colors"
+            aria-label="Change avatar"
+          >
             <Camera size={12} />
           </button>
         </div>
