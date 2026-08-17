@@ -172,8 +172,6 @@ export default function App() {
                   <Route path="insights" element={<AIInsights />} />
                   <Route path="ask" element={<Analysis />} />
                   <Route path="anomalies" element={<Anomalies />} />
-                  <Route path="forecasting" element={<Analysis />} />
-                  <Route path="what-if" element={<Analysis />} />
                   <Route path="visualizations" element={<Analysis />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="reports/:id" element={<ReportDetail />} />

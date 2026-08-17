@@ -103,7 +103,7 @@ export default function DatasetDetail() {
         breadcrumb={[{ label: 'Data Sources' }, { label: dataset.name }]}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="primary" size="sm" icon={<FileSpreadsheet size={15} />} onClick={() => navigate(`/data-sources/${dataset.id}/edit`)}>Edit Data</Button>
+            <Button variant="primary" size="sm" icon={<FileSpreadsheet size={15} />} onClick={() => navigate(`/app/datasets/${dataset.id}/edit`)}>Edit Data</Button>
             <Button variant="ghost" size="sm" icon={<BarChart3 size={15} />} onClick={() => navigate('/analysis')}>Analyze</Button>
             <Button variant="ghost" size="sm" icon={<Sparkles size={15} />} onClick={() => setAiChatOpen(true)}>Ask AI</Button>
             <Button variant="secondary" size="sm" icon={<Download size={15} />} onClick={handleExportCSV}>Export CSV</Button>
@@ -115,7 +115,7 @@ export default function DatasetDetail() {
         {/* Dataset header */}
         <div className="flex items-start gap-4">
           <button
-            onClick={() => navigate('/data-sources')}
+            onClick={() => navigate('/app/datasets')}
             className="mt-1 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors"
           >
             <ArrowLeft size={18} />

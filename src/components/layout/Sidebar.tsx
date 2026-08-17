@@ -3,12 +3,13 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Database, BarChart3, Sparkles, FileText,
   AlertTriangle, Settings, ChevronRight,
-  TrendingUp, LogOut, MessageSquareText, Sliders, ChevronsLeft
+  LogOut, MessageSquareText, ChevronsLeft
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useUser } from '../../hooks/useUser';
 import { getInitials } from '../../lib/utils';
 import { AppLogo } from '../common/AppLogo';
+import { signOutUser } from '../../lib/supabase';
 
 interface NavItem {
   label: string;
@@ -24,8 +25,6 @@ const navItems: NavItem[] = [
   { label: 'AI Insights', icon: <Sparkles size={18} />, path: '/app/insights', badge: 6 },
   { label: 'Ask Your Data', icon: <MessageSquareText size={18} />, path: '/app/ask' },
   { label: 'Anomalies', icon: <AlertTriangle size={18} />, path: '/app/anomalies', badge: 3 },
-  { label: 'Forecasting', icon: <TrendingUp size={18} />, path: '/app/forecasting' },
-  { label: 'What-If Analysis', icon: <Sliders size={18} />, path: '/app/what-if' },
   { label: 'Visualizations', icon: <BarChart3 size={18} />, path: '/app/visualizations' },
   { label: 'Reports', icon: <FileText size={18} />, path: '/app/reports' },
   { label: 'Settings', icon: <Settings size={18} />, path: '/app/settings' },
@@ -40,13 +39,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const user = useUser();
 
-  const handleLogout = (e: React.MouseEvent) => {
+  const handleLogout = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    localStorage.removeItem('insightai_token');
-    localStorage.removeItem('insightai_user_email');
-    localStorage.removeItem('insightai_user_name');
-    window.dispatchEvent(new Event('insightai_user_updated'));
-    navigate('/login');
+    await signOutUser(); // clears localStorage + signs out Supabase/Google session
+    navigate('/');       // redirect to home page
   };
 
   return (

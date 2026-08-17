@@ -85,7 +85,7 @@ export default function Anomalies() {
             description="Upload your CSV datasets to initiate automated scanning for missing values, duplicate rows, and statistical outliers."
             action={{
               label: 'Upload Dataset',
-              onClick: () => navigate('/data-sources'),
+              onClick: () => navigate('/app/datasets'),
             }}
           />
         ) : (

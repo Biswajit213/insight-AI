@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -19,58 +20,111 @@ interface DropdownProps {
   className?: string;
 }
 
+interface MenuPosition {
+  top: number;
+  left?: number;
+  right?: number;
+}
+
 export function Dropdown({ trigger, items, align = 'right', className }: DropdownProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<MenuPosition>({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
+  // Close on outside click
   useEffect(() => {
+    if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+        menuRef.current && !menuRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [open]);
+
+  // Close on scroll so the menu doesn't drift away from the trigger
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => setOpen(false);
+    window.addEventListener('scroll', handler, true);
+    return () => window.removeEventListener('scroll', handler, true);
+  }, [open]);
+
+  const handleTriggerClick = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      if (align === 'right') {
+        setMenuPos({
+          top: rect.bottom + 4,
+          right: viewportWidth - rect.right,
+        });
+      } else {
+        setMenuPos({
+          top: rect.bottom + 4,
+          left: rect.left,
+        });
+      }
+    }
+    setOpen((v) => !v);
+  };
+
+  const menu = open ? (
+    <div
+      ref={menuRef}
+      style={{
+        position: 'fixed',
+        top: menuPos.top,
+        ...(menuPos.right !== undefined ? { right: menuPos.right } : { left: menuPos.left }),
+        zIndex: 9999,
+      }}
+      className="w-48 py-1 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl animate-fade-in"
+      role="menu"
+    >
+      {items.map((item, i) =>
+        item.divider ? (
+          <div key={i} className="my-1 border-t border-slate-100 dark:border-slate-700" />
+        ) : (
+          <button
+            key={i}
+            role="menuitem"
+            disabled={item.disabled}
+            onClick={() => {
+              item.onClick?.();
+              setOpen(false);
+            }}
+            className={cn(
+              'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left',
+              item.danger
+                ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
+                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50',
+              item.disabled && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            {item.icon && <span className="w-4 h-4 flex-shrink-0">{item.icon}</span>}
+            {item.label}
+          </button>
+        )
+      )}
+    </div>
+  ) : null;
 
   return (
-    <div ref={ref} className={cn('relative inline-block', className)}>
-      <div onClick={() => setOpen((v) => !v)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setOpen((v) => !v)}>
+    <div ref={triggerRef} className={cn('relative inline-block', className)}>
+      <div
+        onClick={handleTriggerClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && handleTriggerClick()}
+      >
         {trigger}
       </div>
-
-      {open && (
-        <div
-          className={cn(
-            'absolute z-50 mt-1 w-48 py-1 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg animate-fade-in',
-            align === 'right' ? 'right-0' : 'left-0'
-          )}
-          role="menu"
-        >
-          {items.map((item, i) => (
-            item.divider ? (
-              <div key={i} className="my-1 border-t border-slate-100 dark:border-slate-700" />
-            ) : (
-              <button
-                key={i}
-                role="menuitem"
-                disabled={item.disabled}
-                onClick={() => { item.onClick?.(); setOpen(false); }}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left',
-                  item.danger
-                    ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50',
-                  item.disabled && 'opacity-50 cursor-not-allowed'
-                )}
-              >
-                {item.icon && <span className="w-4 h-4">{item.icon}</span>}
-                {item.label}
-              </button>
-            )
-          ))}
-        </div>
-      )}
+      {typeof document !== 'undefined' && createPortal(menu, document.body)}
     </div>
   );
 }

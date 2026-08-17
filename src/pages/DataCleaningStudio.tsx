@@ -421,7 +421,7 @@ export default function DataCleaningStudio() {
             )}
 
             <button
-              onClick={() => navigate('/data-sources')}
+              onClick={() => navigate('/app/datasets')}
               className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors flex items-center gap-1.5"
             >
               <Upload size={14} /> Upload Dataset
@@ -491,7 +491,7 @@ export default function DataCleaningStudio() {
               Upload a CSV, XLSX or JSON dataset to automatically profile columns and detect data quality issues.
             </p>
             <button
-              onClick={() => navigate('/data-sources')}
+              onClick={() => navigate('/app/datasets')}
               className="px-6 py-3 rounded-2xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all inline-flex items-center gap-2"
             >
               <Upload size={16} /> Upload Dataset

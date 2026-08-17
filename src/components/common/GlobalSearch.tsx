@@ -6,12 +6,12 @@ import { reports } from '../../data/reports';
 import { cn } from '../../lib/utils';
 
 const quickLinks = [
-  { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={16} />, type: 'page' },
-  { label: 'Data Sources', path: '/data-sources', icon: <Database size={16} />, type: 'page' },
-  { label: 'AI Insights', path: '/ai-insights', icon: <Sparkles size={16} />, type: 'page' },
-  { label: 'Reports', path: '/reports', icon: <FileText size={16} />, type: 'page' },
-  { label: 'Anomalies', path: '/anomalies', icon: <AlertTriangle size={16} />, type: 'page' },
-  { label: 'Settings', path: '/settings', icon: <Settings size={16} />, type: 'page' },
+  { label: 'Dashboard', path: '/app', icon: <LayoutDashboard size={16} />, type: 'page' },
+  { label: 'Data Sources', path: '/app/datasets', icon: <Database size={16} />, type: 'page' },
+  { label: 'AI Insights', path: '/app/insights', icon: <Sparkles size={16} />, type: 'page' },
+  { label: 'Reports', path: '/app/reports', icon: <FileText size={16} />, type: 'page' },
+  { label: 'Anomalies', path: '/app/anomalies', icon: <AlertTriangle size={16} />, type: 'page' },
+  { label: 'Settings', path: '/app/settings', icon: <Settings size={16} />, type: 'page' },
 ];
 
 interface GlobalSearchProps {
@@ -76,7 +76,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
           {filteredDatasets.length > 0 && (
             <SearchSection title="Datasets">
               {filteredDatasets.map((ds) => (
-                <SearchItem key={ds.id} icon={<Database size={16} />} label={ds.name} subtitle={ds.fileName} onClick={() => handleSelect(`/data-sources/${ds.id}`)} />
+                <SearchItem key={ds.id} icon={<Database size={16} />} label={ds.name} subtitle={ds.fileName} onClick={() => handleSelect(`/app/datasets/${ds.id}`)} />
               ))}
             </SearchSection>
           )}

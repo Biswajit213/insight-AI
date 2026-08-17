@@ -68,7 +68,7 @@ export function RevenueTrend() {
           <p className="text-xs text-slate-400 max-w-xs mt-1 mb-4">
             Upload your dataset to generate automated AI trend lines and predictions.
           </p>
-          <Button variant="secondary" size="sm" icon={<UploadCloud size={14} />} onClick={() => navigate('/data-sources')}>
+          <Button variant="secondary" size="sm" icon={<UploadCloud size={14} />} onClick={() => navigate('/app/datasets')}>
             Upload Data
           </Button>
         </div>

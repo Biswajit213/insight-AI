@@ -26,7 +26,7 @@ export default function Dashboard() {
         title="Dashboard"
         actions={
           <div className="hidden sm:flex items-center gap-2">
-            <Button variant="secondary" size="sm" icon={<UploadCloud size={15} />} onClick={() => navigate('/data-sources')}>
+            <Button variant="secondary" size="sm" icon={<UploadCloud size={15} />} onClick={() => navigate('/app/datasets')}>
               Upload Data
             </Button>
             <Button variant="primary" size="sm" icon={<FileText size={15} />} onClick={() => navigate('/reports')}>
@@ -52,7 +52,7 @@ export default function Dashboard() {
 
           {datasets.length === 0 && (
             <div className="flex items-center gap-2">
-              <Button variant="primary" size="sm" icon={<UploadCloud size={15} />} onClick={() => navigate('/data-sources')}>
+              <Button variant="primary" size="sm" icon={<UploadCloud size={15} />} onClick={() => navigate('/app/datasets')}>
                 Upload Your First CSV Dataset
               </Button>
             </div>

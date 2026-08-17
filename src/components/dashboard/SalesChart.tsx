@@ -61,7 +61,7 @@ export function SalesChart() {
           <p className="text-xs text-slate-400 max-w-xs mt-1 mb-4">
             Upload your CSV file to view real-time data visualizations and breakdown charts.
           </p>
-          <Button variant="primary" size="sm" icon={<UploadCloud size={14} />} onClick={() => navigate('/data-sources')}>
+          <Button variant="primary" size="sm" icon={<UploadCloud size={14} />} onClick={() => navigate('/app/datasets')}>
             Upload CSV File
           </Button>
         </div>

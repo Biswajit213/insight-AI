@@ -275,7 +275,7 @@ export default function DataSources() {
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.05 }}
                       className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/data-sources/${ds.id}`)}
+                      onClick={() => navigate(`/app/datasets/${ds.id}`)}
                     >
                       <td className="table-cell">
                         <div className="flex items-center gap-3">
@@ -301,7 +301,7 @@ export default function DataSources() {
                             variant="secondary"
                             size="xs"
                             icon={<Edit size={13} />}
-                            onClick={() => navigate(`/data-sources/${ds.id}/edit`)}
+                            onClick={() => navigate(`/app/datasets/${ds.id}/edit`)}
                           >
                             Edit
                           </Button>
@@ -312,8 +312,8 @@ export default function DataSources() {
                               </button>
                             }
                             items={[
-                              { label: 'Edit CSV (Excel View)', icon: <FileSpreadsheet size={14} />, onClick: () => navigate(`/data-sources/${ds.id}/edit`) },
-                              { label: 'View dataset', icon: <Eye size={14} />, onClick: () => navigate(`/data-sources/${ds.id}`) },
+                              { label: 'Edit CSV (Excel View)', icon: <FileSpreadsheet size={14} />, onClick: () => navigate(`/app/datasets/${ds.id}/edit`) },
+                              { label: 'View dataset', icon: <Eye size={14} />, onClick: () => navigate(`/app/datasets/${ds.id}`) },
                               { label: 'Analyze', icon: <BarChart3 size={14} />, onClick: () => navigate('/analysis') },
                               { label: 'Refresh', icon: <RefreshCw size={14} />, onClick: () => {} },
                               { divider: true },
@@ -409,7 +409,7 @@ export default function DataSources() {
                             variant="secondary"
                             size="xs"
                             icon={<Edit size={13} />}
-                            onClick={() => navigate(`/data-sources/${item.datasetId}/edit`)}
+                            onClick={() => navigate(`/app/datasets/${item.datasetId}/edit`)}
                           >
                             Edit
                           </Button>
@@ -417,7 +417,7 @@ export default function DataSources() {
                             variant="ghost"
                             size="xs"
                             icon={<Eye size={13} />}
-                            onClick={() => navigate(`/data-sources/${item.datasetId}`)}
+                            onClick={() => navigate(`/app/datasets/${item.datasetId}`)}
                           >
                             View
                           </Button>
@@ -514,7 +514,7 @@ export default function DataSources() {
                     onClick={() => {
                       const dsId = uploadedFileInfo.id;
                       resetUploadModal();
-                      if (dsId) navigate(`/data-sources/${dsId}`);
+                      if (dsId) navigate(`/app/datasets/${dsId}`);
                     }}
                   >
                     View Dataset

@@ -2,6 +2,7 @@ import fs from 'fs';
 import { supabaseAdmin } from '../config/supabase';
 import { env } from '../config/env';
 import { DataProcessingService } from './data-processing.service';
+import { UploadHistoryService } from './upload-history.service';
 import { Dataset, DatasetColumn, DatasetStatisticsResponse } from '../types/dataset';
 import { NotFoundError, ErrorCode, ForbiddenError } from '../utils/errors';
 import { extractPaginationParams, buildPaginatedMeta, PaginatedMeta } from '../utils/pagination';
@@ -69,6 +70,20 @@ export class DatasetService {
           storage_path: datasetRecord.storage_path,
         });
         await supabaseAdmin.from('dataset_columns').insert(columns);
+
+        // Record upload activity history in database
+        await UploadHistoryService.addEntry({
+          userId,
+          datasetId: datasetId,
+          fileName: originalFilename,
+          datasetName: name,
+          uploadedAt: datasetRecord.created_at,
+          sizeBytes: fileSize,
+          rowCount: processed.rowCount,
+          columnCount: processed.columnCount,
+          missingValues: processed.quality.invalidEntries || 0,
+          status: 'connected',
+        });
       } catch (_e) {}
     }
 

@@ -330,7 +330,7 @@ export default function Analysis() {
 
       <div className="flex-1 overflow-y-auto p-6">
         {datasets.length === 0 ? (
-          <NoDatasets onUpload={() => navigate('/data-sources')} />
+          <NoDatasets onUpload={() => navigate('/app/datasets')} />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
             {/* Left Column: Interactive Configuration Panel */}

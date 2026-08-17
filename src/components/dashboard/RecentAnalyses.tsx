@@ -23,7 +23,7 @@ export function RecentAnalyses() {
           <p className="section-subtitle mt-0.5">Connected datasets & processing runs</p>
         </div>
         <button
-          onClick={() => navigate('/data-sources')}
+          onClick={() => navigate('/app/datasets')}
           className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline"
         >
           Manage datasets
@@ -66,7 +66,7 @@ export function RecentAnalyses() {
                   </button>
                 }
                 items={[
-                  { label: 'View dataset', icon: <Database size={14} />, onClick: () => navigate(`/data-sources/${ds.id}`) },
+                  { label: 'View dataset', icon: <Database size={14} />, onClick: () => navigate(`/app/datasets/${ds.id}`) },
                   { label: 'Analyze', icon: <BarChart3 size={14} />, onClick: () => navigate('/analysis') },
                   { divider: true },
                   { label: 'Delete', onClick: () => deleteDataset(ds.id), danger: true },
