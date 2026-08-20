@@ -6,7 +6,6 @@ import { CleaningApiClient } from '../services/cleaningApi';
 import type {
   DataQualityScanResult,
   DataQualityIssueItem,
-  DetailedColumnProfile,
   DatasetVersionItem,
   CleaningOperationRecord,
   ValidationReport,
@@ -14,7 +13,6 @@ import type {
   PreviewCleanResult,
 } from '../types/cleaning';
 
-// UI Subcomponents
 import { DataQualityScoreCard } from '../components/cleaning/DataQualityScoreCard';
 import { QualityMetricCards } from '../components/cleaning/QualityMetricCards';
 import { DatasetSpreadsheetPreview } from '../components/cleaning/DatasetSpreadsheetPreview';
@@ -29,92 +27,80 @@ import { CustomRuleBuilderModal } from '../components/cleaning/CustomRuleBuilder
 import { DataQualityReportModal } from '../components/cleaning/DataQualityReportModal';
 
 import {
-  Sparkles,
-  Upload,
-  RefreshCw,
-  RotateCcw,
-  RotateCw,
-  PlusCircle,
-  FileSpreadsheet,
-  Database,
+  Sparkles, Upload, RefreshCw, RotateCcw, RotateCw,
+  PlusCircle, FileSpreadsheet, Database,
 } from 'lucide-react';
-import { profileDatasetClientSide, generateClientAISuggestions, applyCustomRuleClientSide } from '../lib/clientDataProfiler';
+import {
+  profileDatasetClientSide,
+  generateClientAISuggestions,
+  applyCustomRuleClientSide,
+} from '../lib/clientDataProfiler';
 
 export default function DataCleaningStudio() {
   const navigate = useNavigate();
   const { id: routeDatasetId } = useParams();
-  const { datasets, getDatasetData } = useDatasets();
+  const { datasets, getDatasetData, updateDatasetData } = useDatasets();
 
   const [activeDatasetId, setActiveDatasetId] = useState<string>('');
-  const [scanResult, setScanResult] = useState<DataQualityScanResult | null>(null);
-  const [aiSuggestions, setAiSuggestions] = useState<AICleaningSuggestion[]>([]);
-  const [versions, setVersions] = useState<DatasetVersionItem[]>([]);
-  const [history, setHistory] = useState<CleaningOperationRecord[]>([]);
-  const [validation, setValidation] = useState<ValidationReport | null>(null);
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [scanResult, setScanResult]           = useState<DataQualityScanResult | null>(null);
+  const [aiSuggestions, setAiSuggestions]     = useState<AICleaningSuggestion[]>([]);
+  const [versions, setVersions]               = useState<DatasetVersionItem[]>([]);
+  const [history, setHistory]                 = useState<CleaningOperationRecord[]>([]);
+  const [validation, setValidation]           = useState<ValidationReport | null>(null);
+  const [rows, setRows]                       = useState<Record<string, unknown>[]>([]);
 
-  // State management for interactions
-  const [isLoadingScan, setIsLoadingScan] = useState(false);
-  const [isLoadingAi, setIsLoadingAi] = useState(false);
+  const [isLoadingScan, setIsLoadingScan]         = useState(false);
+  const [isLoadingAi, setIsLoadingAi]             = useState(false);
   const [isExecutingPipeline, setIsExecutingPipeline] = useState(false);
   const [selectedIssueFilter, setSelectedIssueFilter] = useState<string | null>(null);
 
-  // Pipeline steps builder
-  const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>([]);
-  const [previewData, setPreviewData] = useState<PreviewCleanResult | null>(null);
+  const [pipelineSteps, setPipelineSteps]   = useState<PipelineStep[]>([]);
+  const [previewData, setPreviewData]       = useState<PreviewCleanResult | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isRuleModalOpen, setIsRuleModalOpen]       = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen]   = useState(false);
 
-  // Undo/Redo stack for UI steps
   const [undoStack, setUndoStack] = useState<PipelineStep[][]>([]);
   const [redoStack, setRedoStack] = useState<PipelineStep[][]>([]);
 
-  // Set initial dataset ID
+  // ── Dataset init ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (routeDatasetId) {
-      setActiveDatasetId(routeDatasetId);
-    } else if (datasets.length > 0) {
-      setActiveDatasetId(datasets[0].id);
-    }
+    if (routeDatasetId) setActiveDatasetId(routeDatasetId);
+    else if (datasets.length > 0) setActiveDatasetId(datasets[0].id);
   }, [routeDatasetId, datasets]);
 
-  // Load dataset data
+  // ── Load dataset details ──────────────────────────────────────────────────
   const loadDatasetDetails = useCallback(async (dsId: string) => {
     if (!dsId) return;
     setIsLoadingScan(true);
 
-    const dsMeta = datasets.find((d) => d.id === dsId);
-    const dsData = getDatasetData(dsId);
+    const dsMeta   = datasets.find((d) => d.id === dsId);
+    const dsData   = getDatasetData(dsId);
 
     const sampleRows: Record<string, unknown>[] = [
-      { ID: '01', Name: 'Alex Naskar', Email: 'alex@example.com', Revenue: '$1,200', Region: ' North ', JoinDate: '2025-08-14' },
-      { ID: '02', Name: '', Email: 'invalid-email', Revenue: 'NULL', Region: 'north', JoinDate: '14/08/2025' },
-      { ID: '03', Name: 'Bob Smith', Email: 'bob@example.com', Revenue: '$1,400', Region: 'NORTH', JoinDate: '2025-08-15' },
-      { ID: '01', Name: 'Alex Naskar', Email: 'alex@example.com', Revenue: '$1,200', Region: ' North ', JoinDate: '2025-08-14' },
-      { ID: '05', Name: 'Charlie Brown', Email: 'charlie@gmail.com', Revenue: '$98,000', Region: 'North Region', JoinDate: '2025-08-16' },
+      { ID: '01', Name: 'Alex Naskar',    Email: 'alex@example.com',    Revenue: '$1,200', Region: ' North ',      JoinDate: '2025-08-14' },
+      { ID: '02', Name: '',               Email: 'invalid-email',        Revenue: 'NULL',   Region: 'north',        JoinDate: '14/08/2025' },
+      { ID: '03', Name: 'Bob Smith',      Email: 'bob@example.com',     Revenue: '$1,400', Region: 'NORTH',        JoinDate: '2025-08-15' },
+      { ID: '01', Name: 'Alex Naskar',    Email: 'alex@example.com',    Revenue: '$1,200', Region: ' North ',      JoinDate: '2025-08-14' },
+      { ID: '05', Name: 'Charlie Brown',  Email: 'charlie@gmail.com',   Revenue: '$98,000',Region: 'North Region', JoinDate: '2025-08-16' },
     ];
 
-    const activeRows = dsData && dsData.rows && dsData.rows.length > 0
+    const activeRows = dsData?.rows?.length > 0
       ? (dsData.rows as Record<string, unknown>[])
       : sampleRows;
 
     setRows(activeRows);
 
     try {
-      const scan = await CleaningApiClient.runQualityScan(dsId);
+      const scan  = await CleaningApiClient.runQualityScan(dsId);
       setScanResult(scan);
-
-      const vers = await CleaningApiClient.getVersions(dsId);
+      const vers  = await CleaningApiClient.getVersions(dsId);
       setVersions(vers);
-
-      const hist = await CleaningApiClient.getCleaningHistory(dsId);
+      const hist  = await CleaningApiClient.getCleaningHistory(dsId);
       setHistory(hist);
-
-      const val = await CleaningApiClient.validateDataset(dsId);
+      const val   = await CleaningApiClient.validateDataset(dsId);
       setValidation(val);
 
-      // Fetch AI Suggestions
       setIsLoadingAi(true);
       CleaningApiClient.getAICleaningSuggestions(dsId)
         .then((sug) => setAiSuggestions(sug))
@@ -123,8 +109,7 @@ export default function DataCleaningStudio() {
           setAiSuggestions(generateClientAISuggestions(clientScan.issues));
         })
         .finally(() => setIsLoadingAi(false));
-    } catch (_err) {
-      // Fallback Data Quality Scan Calculation
+    } catch {
       const clientScan = profileDatasetClientSide(dsId, dsMeta?.name || 'Dataset', activeRows);
       setScanResult(clientScan);
       setVersions([clientScan.version]);
@@ -135,12 +120,10 @@ export default function DataCleaningStudio() {
   }, [datasets, getDatasetData]);
 
   useEffect(() => {
-    if (activeDatasetId) {
-      loadDatasetDetails(activeDatasetId);
-    }
+    if (activeDatasetId) loadDatasetDetails(activeDatasetId);
   }, [activeDatasetId, loadDatasetDetails]);
 
-  // Handle pipeline modifications with Undo/Redo tracking
+  // ── Pipeline helpers ──────────────────────────────────────────────────────
   const addStepToPipeline = (step: Omit<PipelineStep, 'id'>) => {
     const newStep: PipelineStep = { ...step, id: crypto.randomUUID() };
     setUndoStack((prev) => [...prev, pipelineSteps]);
@@ -159,7 +142,7 @@ export default function DataCleaningStudio() {
     const previous = undoStack[undoStack.length - 1];
     setRedoStack((prev) => [...prev, pipelineSteps]);
     setPipelineSteps(previous);
-    setUndoStack((prev) => prev.slice(0, prev.length - 1));
+    setUndoStack((prev) => prev.slice(0, -1));
   };
 
   const handleRedo = () => {
@@ -167,56 +150,244 @@ export default function DataCleaningStudio() {
     const next = redoStack[redoStack.length - 1];
     setUndoStack((prev) => [...prev, pipelineSteps]);
     setPipelineSteps(next);
-    setRedoStack((prev) => prev.slice(0, prev.length - 1));
+    setRedoStack((prev) => prev.slice(0, -1));
   };
 
-  // Preview before apply
+  // ── Full client-side cleaning engine ─────────────────────────────────────
+  // Used when backend is unavailable or dataset is not in server memory
+  const applyPipelineLocally = useCallback((steps: PipelineStep[], baseRows: Record<string, unknown>[]) => {
+    let updated = baseRows.map((r) => ({ ...r }));
+
+    for (const step of steps) {
+      const { operationType, columnName, parameters = {} } = step;
+
+      // ── REMOVE_DUPLICATES ──────────────────────────────────────────────
+      if (operationType === 'REMOVE_DUPLICATES') {
+        const seen = new Set<string>();
+        updated = updated.filter((r) => {
+          const sig = columnName ? String(r[columnName] ?? '') : JSON.stringify(r);
+          if (seen.has(sig)) return false;
+          seen.add(sig);
+          return true;
+        });
+
+      // ── IMPUTE_MISSING / FILL_NULLS ───────────────────────────────────
+      } else if ((operationType === 'IMPUTE_MISSING' || operationType === 'FILL_NULLS') && columnName) {
+        const strategy    = (parameters.strategy as string) || 'mean';
+        const customValue = parameters.customValue;
+
+        const isMissing = (v: unknown) =>
+          v === null || v === undefined || String(v).trim() === '' || String(v).toLowerCase() === 'null';
+
+        const validNums = updated
+          .map((r) => r[columnName])
+          .filter((v) => !isMissing(v))
+          .map((v) => Number(String(v).replace(/[$,\s]/g, '')))
+          .filter((v) => !isNaN(v));
+
+        let replacement: unknown = customValue ?? 'Unknown';
+
+        if (strategy === 'mean' && validNums.length > 0) {
+          replacement = Number((validNums.reduce((a, b) => a + b, 0) / validNums.length).toFixed(2));
+        } else if (strategy === 'median' && validNums.length > 0) {
+          const sorted = [...validNums].sort((a, b) => a - b);
+          const mid    = Math.floor(sorted.length / 2);
+          replacement  = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        } else if (strategy === 'mode') {
+          const freq: Record<string, number> = {};
+          updated.forEach((r) => {
+            const v = r[columnName];
+            if (!isMissing(v)) { const s = String(v).trim(); freq[s] = (freq[s] || 0) + 1; }
+          });
+          replacement = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Unknown';
+        }
+
+        let prevVal: unknown = replacement;
+        updated = updated.map((r) => {
+          const copy = { ...r };
+          const cur  = copy[columnName];
+          if (strategy === 'forward_fill') {
+            if (!isMissing(cur)) prevVal = cur;
+            else copy[columnName] = prevVal;
+          } else if (isMissing(cur)) {
+            copy[columnName] = replacement;
+          }
+          return copy;
+        });
+
+      // ── STANDARDIZE_TEXT / CATEGORY / TRIM_WHITESPACE ─────────────────
+      } else if (
+        (operationType === 'STANDARDIZE_TEXT' ||
+         operationType === 'STANDARDIZE_CATEGORY' ||
+         operationType === 'TRIM_WHITESPACE') && columnName
+      ) {
+        const casing      = (parameters.casing as string) || 'title';
+        const categoryMap = (parameters.categoryMap as Record<string, string>) || {};
+
+        updated = updated.map((r) => {
+          const copy = { ...r };
+          if (copy[columnName] != null) {
+            let str = String(copy[columnName]).trim().replace(/\s+/g, ' ');
+            if (categoryMap[str]) {
+              str = categoryMap[str];
+            } else if (parameters.target && str.toLowerCase() === String(parameters.target).toLowerCase()) {
+              str = String(parameters.target);
+            } else if (casing === 'lowercase') str = str.toLowerCase();
+            else if (casing === 'uppercase') str = str.toUpperCase();
+            else if (casing === 'title')
+              str = str.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+            copy[columnName] = str;
+          }
+          return copy;
+        });
+
+      // ── CAST_TYPE / CONVERT_FORMAT ────────────────────────────────────
+      } else if ((operationType === 'CAST_TYPE' || operationType === 'CONVERT_FORMAT') && columnName) {
+        const targetType = (parameters.targetType as string) || 'NUMBER';
+        updated = updated.map((r) => {
+          const copy = { ...r };
+          const raw  = copy[columnName];
+          if (raw == null) return copy;
+          const str  = String(raw).trim();
+          if (['NUMBER', 'INTEGER', 'DECIMAL', 'CURRENCY'].includes(targetType)) {
+            const n = Number(str.replace(/[$,\s₹€£%]/g, ''));
+            if (!isNaN(n)) copy[columnName] = targetType === 'INTEGER' ? Math.round(n) : n;
+          } else if (targetType === 'BOOLEAN') {
+            if (['true', '1', 'yes', 'y'].includes(str.toLowerCase()))  copy[columnName] = true;
+            else if (['false', '0', 'no', 'n'].includes(str.toLowerCase())) copy[columnName] = false;
+          } else if (targetType === 'DATE') {
+            const ts = Date.parse(str);
+            if (!isNaN(ts)) {
+              const d  = new Date(ts);
+              const yy = d.getFullYear();
+              const mm = String(d.getMonth() + 1).padStart(2, '0');
+              const dd = String(d.getDate()).padStart(2, '0');
+              copy[columnName] = `${yy}-${mm}-${dd}`;
+            }
+          }
+          return copy;
+        });
+
+      // ── HANDLE_OUTLIERS / REMOVE_OUTLIERS ─────────────────────────────
+      } else if ((operationType === 'HANDLE_OUTLIERS' || operationType === 'REMOVE_OUTLIERS') && columnName) {
+        const strategy = (parameters.strategy as string) || 'cap';
+        const nums     = updated.map((r) => Number(r[columnName])).filter((v) => !isNaN(v)).sort((a, b) => a - b);
+
+        if (nums.length >= 5) {
+          const q1  = nums[Math.floor(nums.length * 0.25)];
+          const q3  = nums[Math.floor(nums.length * 0.75)];
+          const iqr = q3 - q1;
+          const lo  = q1 - 1.5 * iqr;
+          const hi  = q3 + 1.5 * iqr;
+          const med = nums[Math.floor(nums.length / 2)];
+
+          if (strategy === 'remove') {
+            updated = updated.filter((r) => {
+              const v = Number(r[columnName]);
+              return isNaN(v) || (v >= lo && v <= hi);
+            });
+          } else {
+            updated = updated.map((r) => {
+              const copy = { ...r };
+              const v    = Number(copy[columnName]);
+              if (!isNaN(v)) {
+                if (v < lo) copy[columnName] = strategy === 'cap' ? lo : med;
+                else if (v > hi) copy[columnName] = strategy === 'cap' ? hi : med;
+              }
+              return copy;
+            });
+          }
+        }
+
+      // ── REMOVE_COLUMN ─────────────────────────────────────────────────
+      } else if (operationType === 'REMOVE_COLUMN' && columnName) {
+        updated = updated.map((r) => { const copy = { ...r }; delete copy[columnName]; return copy; });
+      }
+    }
+
+    // Persist cleaned rows to DatasetContext
+    const dsMeta = datasets.find((d) => d.id === activeDatasetId);
+    const cols   = updated.length > 0
+      ? Object.keys(updated[0]).map((k) => ({
+          name:        k,
+          type:        (typeof updated[0][k] === 'number' ? 'number' : 'string') as any,
+          nullCount:   0,
+          uniqueCount: new Set(updated.map((r) => r[k])).size,
+          sample:      updated.slice(0, 3).map((r) => r[k]) as any[],
+        }))
+      : [];
+    updateDatasetData(activeDatasetId, cols, updated as any[]);
+
+    // Update local state
+    setRows(updated);
+
+    const newScan    = profileDatasetClientSide(activeDatasetId, dsMeta?.name || 'Dataset', updated);
+    setScanResult(newScan);
+
+    const newVerNum  = versions.length + 1;
+    const newVerItem: DatasetVersionItem = {
+      id:               `v${newVerNum}_${Date.now()}`,
+      datasetId:        activeDatasetId,
+      versionNumber:    newVerNum,
+      versionLabel:     `v${newVerNum} Cleaned (${steps.length} op${steps.length !== 1 ? 's' : ''})`,
+      storagePath:      '',
+      rowCount:         updated.length,
+      columnCount:      updated.length > 0 ? Object.keys(updated[0]).length : 0,
+      dataQualityScore: newScan.scores.overallScore,
+      createdAt:        new Date().toISOString(),
+    };
+    setVersions((prev) => [newVerItem, ...prev]);
+    setHistory((prev) => [
+      {
+        id:               crypto.randomUUID(),
+        datasetId:        activeDatasetId,
+        datasetVersionId: newVerItem.id,
+        operationType:    steps[0]?.operationType || 'PIPELINE',
+        columnName:       steps[0]?.columnName,
+        parameters:       steps[0]?.parameters || {},
+        rowsAffected:     steps.length,
+        beforeSample:     [],
+        afterSample:      [],
+        createdAt:        new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+    setPipelineSteps([]);
+  }, [activeDatasetId, datasets, versions, updateDatasetData]);
+
+  // ── Preview pipeline ──────────────────────────────────────────────────────
   const handlePreviewPipeline = async () => {
     if (!activeDatasetId || pipelineSteps.length === 0) return;
     try {
       const res = await CleaningApiClient.previewClean(activeDatasetId, pipelineSteps);
       setPreviewData(res);
       setIsPreviewModalOpen(true);
-    } catch (_err) {
-      // Local preview fallback
+    } catch {
+      // Client-side preview
       const beforeSample = rows.slice(0, 15);
-      let afterRows = rows.slice(0, 15).map((r) => ({ ...r }));
+      const afterRows    = [...beforeSample.map((r) => ({ ...r }))];
       const diffs: any[] = [];
-      let rowsAff = 0;
+      let rowsAff        = 0;
 
       for (const step of pipelineSteps) {
         if (step.operationType === 'REMOVE_DUPLICATES') {
           const seen = new Set<string>();
-          afterRows = afterRows.filter((r) => {
+          const filtered = afterRows.filter((r) => {
             const sig = JSON.stringify(r);
             if (seen.has(sig)) return false;
             seen.add(sig);
             return true;
           });
+          rowsAff += afterRows.length - filtered.length;
         } else if (step.operationType === 'IMPUTE_MISSING' && step.columnName) {
-          afterRows = afterRows.map((r, rIdx) => {
-            const copy = { ...r };
-            const val = copy[step.columnName!];
-            if (val === null || val === undefined || String(val).trim() === '' || String(val).toLowerCase() === 'null') {
-              copy[step.columnName!] = step.parameters?.strategy === 'median' ? 1400 : 'North';
-              diffs.push({ rowIndex: rIdx, columnName: step.columnName!, before: val, after: copy[step.columnName!] });
+          afterRows.forEach((r, i) => {
+            const v = r[step.columnName!];
+            if (v === null || v === undefined || String(v).trim() === '') {
+              const rep = step.parameters?.customValue ?? (step.parameters?.strategy === 'median' ? 0 : 'Unknown');
+              diffs.push({ rowIndex: i, columnName: step.columnName!, before: v, after: rep });
+              r[step.columnName!] = rep;
               rowsAff++;
             }
-            return copy;
-          });
-        } else if ((step.operationType === 'STANDARDIZE_CATEGORY' || step.operationType === 'STANDARDIZE_TEXT') && step.columnName) {
-          const target = (step.parameters?.target as string) || 'North';
-          afterRows = afterRows.map((r, rIdx) => {
-            const copy = { ...r };
-            if (copy[step.columnName!]) {
-              const str = String(copy[step.columnName!]).trim();
-              if (str.toLowerCase() === target.toLowerCase() && str !== target) {
-                diffs.push({ rowIndex: rIdx, columnName: step.columnName!, before: str, after: target });
-                copy[step.columnName!] = target;
-                rowsAff++;
-              }
-            }
-            return copy;
           });
         }
       }
@@ -232,7 +403,7 @@ export default function DataCleaningStudio() {
     }
   };
 
-  // Execute pipeline
+  // ── Execute pipeline (from pipeline visualizer or modal confirm) ──────────
   const handleExecutePipeline = async () => {
     if (!activeDatasetId || pipelineSteps.length === 0) return;
     setIsExecutingPipeline(true);
@@ -241,102 +412,65 @@ export default function DataCleaningStudio() {
       setIsPreviewModalOpen(false);
       setPipelineSteps([]);
       loadDatasetDetails(activeDatasetId);
-    } catch (_err) {
-      // Local execution fallback
-      let updatedRows = rows.map((r) => ({ ...r }));
-      for (const step of pipelineSteps) {
-        if (step.operationType === 'REMOVE_DUPLICATES') {
-          const seen = new Set<string>();
-          updatedRows = updatedRows.filter((r) => {
-            const sig = JSON.stringify(r);
-            if (seen.has(sig)) return false;
-            seen.add(sig);
-            return true;
-          });
-        } else if (step.operationType === 'IMPUTE_MISSING' && step.columnName) {
-          updatedRows = updatedRows.map((r) => {
-            const copy = { ...r };
-            const val = copy[step.columnName!];
-            if (val === null || val === undefined || String(val).trim() === '' || String(val).toLowerCase() === 'null') {
-              copy[step.columnName!] = step.parameters?.strategy === 'median' ? 1400 : 'North';
-            }
-            return copy;
-          });
-        } else if ((step.operationType === 'STANDARDIZE_CATEGORY' || step.operationType === 'STANDARDIZE_TEXT') && step.columnName) {
-          const target = (step.parameters?.target as string) || 'North';
-          updatedRows = updatedRows.map((r) => {
-            const copy = { ...r };
-            if (copy[step.columnName!]) {
-              const str = String(copy[step.columnName!]).trim();
-              if (str.toLowerCase() === target.toLowerCase()) copy[step.columnName!] = target;
-            }
-            return copy;
-          });
-        }
-      }
-      setRows(updatedRows);
-      const dsMeta = datasets.find((d) => d.id === activeDatasetId);
-      const newScan = profileDatasetClientSide(activeDatasetId, dsMeta?.name || 'Dataset', updatedRows);
-      setScanResult(newScan);
-
-      const newVerNum = versions.length + 1;
-      const newVerItem = {
-        id: `v${newVerNum}`,
-        datasetId: activeDatasetId,
-        versionNumber: newVerNum,
-        versionLabel: `v${newVerNum} Cleaned (${pipelineSteps.length} ops)`,
-        storagePath: `datasets/${activeDatasetId}/v${newVerNum}.csv`,
-        rowCount: updatedRows.length,
-        columnCount: updatedRows.length > 0 ? Object.keys(updatedRows[0]).length : 0,
-        dataQualityScore: newScan.scores.overallScore,
-        createdAt: new Date().toISOString(),
-      };
-      setVersions((prev) => [newVerItem, ...prev]);
-      setHistory((prev) => [
-        {
-          id: crypto.randomUUID(),
-          datasetId: activeDatasetId,
-          datasetVersionId: newVerItem.id,
-          operationType: pipelineSteps[0]?.operationType || 'CLEAN_DATASET',
-          columnName: pipelineSteps[0]?.columnName,
-          parameters: pipelineSteps[0]?.parameters || {},
-          rowsAffected: pipelineSteps.length,
-          beforeSample: [],
-          afterSample: [],
-          createdAt: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
+    } catch {
+      // API failed — fall back to client-side full engine
+      applyPipelineLocally(pipelineSteps, rows);
       setIsPreviewModalOpen(false);
-      setPipelineSteps([]);
     } finally {
       setIsExecutingPipeline(false);
     }
   };
 
-  // Quick single issue fix action
-  const handleApplySingleFix = (issue: DataQualityIssueItem, params?: Record<string, unknown>) => {
-    addStepToPipeline({
-      operationType: issue.recommendedAction.actionType,
-      columnName: issue.columnName,
-      label: issue.recommendedAction.label,
-      parameters: { ...(issue.recommendedAction.parameters || {}), ...(params || {}) },
-    });
-  };
+  // ── Apply all AI suggestions — executes immediately ───────────────────────
+  const handleApplyAllAISuggestions = async (sugList: AICleaningSuggestion[]) => {
+    if (sugList.length === 0) return;
 
-  // Apply all AI recommendations
-  const handleApplyAllAISuggestions = (sugList: AICleaningSuggestion[]) => {
-    for (const sug of sugList) {
-      addStepToPipeline({
-        operationType: sug.actionParams.operationType,
-        columnName: sug.columnName,
-        label: sug.recommendation,
-        parameters: sug.actionParams.parameters,
-      });
+    const newSteps: PipelineStep[] = sugList.map((sug) => ({
+      id:            crypto.randomUUID(),
+      operationType: sug.actionParams.operationType,
+      columnName:    sug.columnName,
+      label:         sug.recommendation,
+      parameters:    sug.actionParams.parameters,
+    }));
+
+    // Show steps in pipeline UI
+    setUndoStack((prev) => [...prev, pipelineSteps]);
+    setRedoStack([]);
+    setPipelineSteps(newSteps);
+
+    // Execute immediately
+    setIsExecutingPipeline(true);
+    try {
+      await CleaningApiClient.cleanDataset(
+        activeDatasetId,
+        newSteps.map((s) => ({
+          operationType: s.operationType,
+          columnName:    s.columnName,
+          parameters:    s.parameters,
+        })),
+        `AI Recommended (${newSteps.length} fixes)`
+      );
+      setPipelineSteps([]);
+      loadDatasetDetails(activeDatasetId);
+    } catch {
+      // API unavailable — apply locally
+      applyPipelineLocally(newSteps, rows);
+    } finally {
+      setIsExecutingPipeline(false);
     }
   };
 
-  // Rollback version
+  // ── Single issue quick-fix ────────────────────────────────────────────────
+  const handleApplySingleFix = (issue: DataQualityIssueItem, params?: Record<string, unknown>) => {
+    addStepToPipeline({
+      operationType: issue.recommendedAction.actionType,
+      columnName:    issue.columnName,
+      label:         issue.recommendedAction.label,
+      parameters:    { ...(issue.recommendedAction.parameters || {}), ...(params || {}) },
+    });
+  };
+
+  // ── Rollback version ──────────────────────────────────────────────────────
   const handleRollbackVersion = async (vId: string) => {
     if (!activeDatasetId) return;
     try {
@@ -347,42 +481,36 @@ export default function DataCleaningStudio() {
     }
   };
 
-  // Save custom rule
+  // ── Custom rule ───────────────────────────────────────────────────────────
   const handleSaveCustomRule = async (rule: any) => {
     if (!activeDatasetId) return;
     try {
       await CleaningApiClient.addCustomRule(activeDatasetId, rule);
       await loadDatasetDetails(activeDatasetId);
-    } catch (_err) {
-      // Local custom rule evaluation fallback
-      if (scanResult) {
-        const updatedScan = applyCustomRuleClientSide(scanResult, rule, rows);
-        setScanResult(updatedScan);
-      }
+    } catch {
+      if (scanResult) setScanResult(applyCustomRuleClientSide(scanResult, rule, rows));
     }
   };
 
-  // Export clean dataset
   const handleExport = (format: 'csv' | 'json') => {
     if (!activeDatasetId) return;
     window.open(`/api/v1/datasets/${activeDatasetId}/export?format=${format}`, '_blank');
   };
 
-  // Send to AI Analysis integration
   const handleSendToAIAnalysis = () => {
-    const activeVer = scanResult?.version;
     navigate('/ai-insights', {
       state: {
-        datasetId: activeDatasetId,
-        datasetVersionId: activeVer?.id,
-        versionLabel: activeVer?.versionLabel || 'v2 Cleaned',
+        datasetId:        activeDatasetId,
+        datasetVersionId: scanResult?.version?.id,
+        versionLabel:     scanResult?.version?.versionLabel || 'v2 Cleaned',
       },
     });
   };
 
   const currentDataset = datasets.find((d) => d.id === activeDatasetId) || datasets[0];
-  const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const headers        = rows.length > 0 ? Object.keys(rows[0]) : [];
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full bg-[#0b1120] text-slate-100">
       <Header
@@ -393,7 +521,6 @@ export default function DataCleaningStudio() {
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* Top Control Bar */}
         <div className="card p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4">
-          {/* Dataset Switcher & Badges */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-semibold">
               <Database size={15} className="text-blue-400" />
@@ -428,59 +555,31 @@ export default function DataCleaningStudio() {
             </button>
           </div>
 
-          {/* Action Tools: Undo, Scan, Rule, Export, AI Analysis */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-              <button
-                disabled={undoStack.length === 0}
-                onClick={handleUndo}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30"
-                title="Undo Step"
-              >
-                <RotateCcw size={14} />
-              </button>
-              <button
-                disabled={redoStack.length === 0}
-                onClick={handleRedo}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30"
-                title="Redo Step"
-              >
-                <RotateCw size={14} />
-              </button>
+              <button disabled={undoStack.length === 0} onClick={handleUndo} className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30" title="Undo"><RotateCcw size={14} /></button>
+              <button disabled={redoStack.length === 0} onClick={handleRedo} className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30" title="Redo"><RotateCw size={14} /></button>
             </div>
 
-            <button
-              onClick={() => setIsRuleModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors flex items-center gap-1.5"
-            >
+            <button onClick={() => setIsRuleModalOpen(true)} className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors flex items-center gap-1.5">
               <PlusCircle size={14} /> Custom Rule
             </button>
 
-            <button
-              onClick={() => loadDatasetDetails(activeDatasetId)}
-              disabled={isLoadingScan}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20"
-            >
+            <button onClick={() => loadDatasetDetails(activeDatasetId)} disabled={isLoadingScan} className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20">
               <RefreshCw size={14} className={isLoadingScan ? 'animate-spin' : ''} /> Run Scan
             </button>
 
-            <button
-              onClick={() => setIsReportModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors flex items-center gap-1.5"
-            >
+            <button onClick={() => setIsReportModalOpen(true)} className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors flex items-center gap-1.5">
               <FileSpreadsheet size={14} /> Quality Report
             </button>
 
-            <button
-              onClick={handleSendToAIAnalysis}
-              className="px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-600/30 transition-all flex items-center gap-1.5"
-            >
+            <button onClick={handleSendToAIAnalysis} className="px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-600/30 transition-all flex items-center gap-1.5">
               <Sparkles size={14} /> Analyze with AI →
             </button>
           </div>
         </div>
 
-        {/* Empty State Check */}
+        {/* Empty state */}
         {!currentDataset ? (
           <div className="card p-12 text-center bg-slate-900/60 border border-slate-800 rounded-3xl space-y-4 max-w-lg mx-auto my-12">
             <div className="w-16 h-16 rounded-2xl bg-blue-600/20 text-blue-400 flex items-center justify-center mx-auto border border-blue-500/30">
@@ -490,24 +589,14 @@ export default function DataCleaningStudio() {
             <p className="text-xs text-slate-400 leading-relaxed">
               Upload a CSV, XLSX or JSON dataset to automatically profile columns and detect data quality issues.
             </p>
-            <button
-              onClick={() => navigate('/app/datasets')}
-              className="px-6 py-3 rounded-2xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all inline-flex items-center gap-2"
-            >
+            <button onClick={() => navigate('/app/datasets')} className="px-6 py-3 rounded-2xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all inline-flex items-center gap-2">
               <Upload size={16} /> Upload Dataset
             </button>
           </div>
         ) : (
           <>
-            {/* Section 1: Data Quality Score Card */}
-            {scanResult && (
-              <DataQualityScoreCard
-                scores={scanResult.scores}
-                versionLabel={scanResult.version.versionLabel}
-              />
-            )}
+            {scanResult && <DataQualityScoreCard scores={scanResult.scores} versionLabel={scanResult.version.versionLabel} />}
 
-            {/* Section 2: Interactive Clickable Metric Overview Cards */}
             {scanResult && (
               <QualityMetricCards
                 counts={scanResult.counts}
@@ -516,29 +605,22 @@ export default function DataCleaningStudio() {
               />
             )}
 
-            {/* Section 3: AI Cleaning Assistant Recommendations Panel */}
             <AICleaningAssistantPanel
               suggestions={aiSuggestions}
-              isLoading={isLoadingAi}
+              isLoading={isLoadingAi || isExecutingPipeline}
               onApplyAll={handleApplyAllAISuggestions}
               onReviewSuggestion={(sug) =>
                 addStepToPipeline({
                   operationType: sug.actionParams.operationType,
-                  columnName: sug.columnName,
-                  label: sug.recommendation,
-                  parameters: sug.actionParams.parameters,
+                  columnName:    sug.columnName,
+                  label:         sug.recommendation,
+                  parameters:    sug.actionParams.parameters,
                 })
               }
             />
 
-            {/* Section 4: Spreadsheet Data Preview */}
-            <DatasetSpreadsheetPreview
-              headers={headers}
-              rows={rows}
-              profiles={scanResult?.profiles || []}
-            />
+            <DatasetSpreadsheetPreview headers={headers} rows={rows} profiles={scanResult?.profiles || []} />
 
-            {/* Section 5: Visual Pipeline Builder */}
             <CleaningPipelineVisualizer
               steps={pipelineSteps}
               onRemoveStep={handleRemoveStep}
@@ -547,7 +629,6 @@ export default function DataCleaningStudio() {
               isExecuting={isExecutingPipeline}
             />
 
-            {/* Section 6: Issues Manager */}
             {scanResult && (
               <IssueListPanel
                 issues={scanResult.issues}
@@ -556,7 +637,6 @@ export default function DataCleaningStudio() {
               />
             )}
 
-            {/* Section 7: Audit Log History */}
             <CleaningHistoryTable history={history} onRollbackVersion={handleRollbackVersion} />
           </>
         )}

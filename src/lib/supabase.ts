@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { storeLoginData } from '../services/authApi';
 
-const SUPABASE_URL = 'https://jfuuzdrdhveuijprezql.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_98B0qXWwuPmK28Uv-bbppw_pAg8mijV';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://jfuuzdrdhveuijprezql.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_98B0qXWwuPmK28Uv-bbppw_pAg8mijV';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

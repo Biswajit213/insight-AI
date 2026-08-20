@@ -1,6 +1,6 @@
 import React from 'react';
 import type { PreviewCleanResult } from '../../types/cleaning';
-import { X, ArrowRight, CheckCircle } from 'lucide-react';
+import { X, CheckCircle } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;

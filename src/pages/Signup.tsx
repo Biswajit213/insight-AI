@@ -7,7 +7,6 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '../components/common/Button';
 import { AppLogo } from '../components/common/AppLogo';
-
 import { signInWithGoogle } from '../lib/supabase';
 import { storeSignupData } from '../services/authApi';
 
@@ -30,34 +29,34 @@ export default function Signup() {
 
   const onSubmit = async (data: FormData) => {
     await new Promise((r) => setTimeout(r, 600));
-    const userEmail = data.email.trim();
+    const userEmail = data.email.trim().toLowerCase();
     const userName = data.name.trim();
-    const token = 'usr-' + Date.now();
 
+    // Backend looks up existing profile by email — returns canonical user_id
     const dbProfile = await storeSignupData({
       email: userEmail,
       fullName: userName,
-      userId: token,
     });
 
-    const activeUserId = dbProfile?.user_id || dbProfile?.id || token;
+    const activeUserId = dbProfile?.user_id || dbProfile?.id;
 
-    localStorage.setItem('insightai_token', activeUserId);
+    if (!activeUserId) {
+      const offlineToken = btoa(userEmail).replace(/=/g, '');
+      localStorage.setItem('insightai_token', offlineToken);
+    } else {
+      localStorage.setItem('insightai_token', activeUserId);
+    }
     localStorage.setItem('insightai_user_email', userEmail);
-    localStorage.setItem('insightai_user_name', userName);
+    localStorage.setItem('insightai_user_name', dbProfile?.full_name || userName);
     localStorage.removeItem('insightai_user_avatar');
     window.dispatchEvent(new Event('insightai_user_updated'));
     navigate('/app');
   };
 
-  // Triggers real Google OAuth — opens the browser's native account picker.
-  // On return, supabase.onAuthStateChange fires, captures real Google profile
-  // (name, email, avatar), saves it to localStorage + database automatically.
   const handleGoogleSignup = async () => {
     setGoogleLoading(true);
     try {
       await signInWithGoogle('/app');
-      // Browser redirects to Google — execution stops here.
     } catch {
       setGoogleLoading(false);
     }

@@ -1,13 +1,18 @@
 /**
  * apiClient.ts
  *
- * Authenticated fetch wrapper. Automatically attaches the
- * Authorization: Bearer <token> header from localStorage so every
- * API call is properly tied to the logged-in user.
+ * Authenticated fetch wrapper.
+ * Sends both Authorization: Bearer <token> AND x-user-email header
+ * so the backend auth middleware can always identify the user even if
+ * the token stored in localStorage is from an older session.
  */
 
 function getToken(): string {
   return localStorage.getItem('insightai_token') || '';
+}
+
+function getUserEmail(): string {
+  return localStorage.getItem('insightai_user_email') || '';
 }
 
 interface RequestOptions extends RequestInit {
@@ -17,7 +22,6 @@ interface RequestOptions extends RequestInit {
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { params, headers, ...rest } = options;
 
-  // Build query string if params are provided
   let url = path;
   if (params && Object.keys(params).length > 0) {
     const qs = new URLSearchParams(
@@ -27,11 +31,15 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   const token = getToken();
+  const email = getUserEmail();
+
   const res = await fetch(url, {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      // Always send email as fallback identifier — auth middleware Strategy 3
+      ...(email ? { 'x-user-email': email } : {}),
       ...(headers || {}),
     },
   });
@@ -42,7 +50,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       const body = await res.json();
       message = body?.error?.message || body?.message || message;
     } catch {
-      // ignore parse errors
+      // ignore
     }
     throw new Error(message);
   }
@@ -51,10 +59,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 }
 
 export const apiClient = {
-  get: <T>(path: string, params?: Record<string, string | number | boolean>) =>
+  get:    <T>(path: string, params?: Record<string, string | number | boolean>) =>
     request<T>(path, { method: 'GET', params }),
 
-  post: <T>(path: string, body?: unknown) =>
+  post:   <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
 
   delete: <T>(path: string) =>

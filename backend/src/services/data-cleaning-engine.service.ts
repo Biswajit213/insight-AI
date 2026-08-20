@@ -86,7 +86,7 @@ export class DataCleaningEngineService {
           const validNums = rows
             .map((r) => r[columnName])
             .filter((v) => !DataProfilerService.isValueMissing(v))
-            .map((v) => Number(String(v).replace(/[\$,\s]/g, '')))
+            .map((v) => Number(String(v).replace(/[$,\s]/g, '')))
             .filter((v) => !isNaN(v));
 
           if (strategy === 'mean' && validNums.length > 0) {
@@ -208,7 +208,7 @@ export class DataCleaningEngineService {
           const str = String(raw).trim();
 
           if (targetType === 'NUMBER' || targetType === 'INTEGER' || targetType === 'DECIMAL' || targetType === 'CURRENCY') {
-            const cleanStr = str.replace(/[\$,\s₹€£]/g, '').replace(/%$/, '');
+            const cleanStr = str.replace(/[$,\s₹€£]/g, '').replace(/%$/, '');
             const num = Number(cleanStr);
             if (!isNaN(num)) {
               copy[columnName] = targetType === 'INTEGER' ? Math.round(num) : num;

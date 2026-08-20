@@ -6,6 +6,7 @@ import { UploadHistoryService } from './upload-history.service';
 import { Dataset, DatasetColumn, DatasetStatisticsResponse } from '../types/dataset';
 import { NotFoundError, ErrorCode, ForbiddenError } from '../utils/errors';
 import { extractPaginationParams, buildPaginatedMeta, PaginatedMeta } from '../utils/pagination';
+import { logger } from '../utils/logger';
 
 // In-memory fallback dataset store for local development without live database setup
 const memoryDatasets = new Map<string, { dataset: Dataset; columns: DatasetColumn[]; rows: Record<string, unknown>[] }>();
@@ -84,7 +85,9 @@ export class DatasetService {
           missingValues: processed.quality.invalidEntries || 0,
           status: 'connected',
         });
-      } catch (_e) {}
+      } catch (err) {
+        logger.warn('Failed to record upload history entry:', err);
+      }
     }
 
     memoryDatasets.set(datasetId, {
@@ -130,7 +133,9 @@ export class DatasetService {
             meta: buildPaginatedMeta(page, limit, count || userDatasets.length),
           };
         }
-      } catch (_err) {}
+      } catch (err) {
+        logger.warn('Failed to fetch user datasets from database:', err);
+      }
     }
 
     // Memory fallback
@@ -275,8 +280,8 @@ export class DatasetService {
 
     try {
       await supabaseAdmin.from('datasets').delete().eq('id', datasetId).eq('user_id', userId);
-    } catch (_err) {
-      // Ignore if database disconnect
+    } catch (err) {
+      logger.warn('Failed to delete dataset from database:', err);
     }
   }
 

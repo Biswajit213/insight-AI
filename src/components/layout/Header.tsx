@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Search, Bell, Sun, Moon, Plus, FileText, Command } from 'lucide-react';
+import { Search, Bell, Sun, Moon, Command } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { notifications } from '../../data/dashboardData';
 import { Badge } from '../common/Badge';
-import { Button } from '../common/Button';
 import { cn } from '../../lib/utils';
 import { formatTimestamp } from '../../lib/utils';
 

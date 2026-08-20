@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { X, Send, Sparkles, Copy, RefreshCw, Bot, User } from 'lucide-react';
-import { Button } from '../common/Button';
+import React, { useState, useEffect } from 'react';
+import { X, Send, Sparkles, Bot, User } from 'lucide-react';
 import type { AIInsight } from '../../types';
 
 interface InsightChatDrawerProps {
@@ -23,17 +22,23 @@ const PRESET_PROMPTS = [
 ];
 
 export const InsightChatDrawer: React.FC<InsightChatDrawerProps> = ({ isOpen, onClose, insight }) => {
-  if (!isOpen || !insight) return null;
-
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'm1',
-      sender: 'ai',
-      text: `Hello! I am your AI Data Analyst assistant. I have verified all metrics for insight "${insight.title}". What would you like to investigate?`,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    if (insight) {
+      setMessages([
+        {
+          id: 'm1',
+          sender: 'ai',
+          text: `Hello! I am your AI Data Analyst assistant. I have verified all metrics for insight "${insight.title}". What would you like to investigate?`,
+        },
+      ]);
+    }
+  }, [insight]);
+
+  if (!isOpen || !insight) return null;
 
   const handleSend = async (textToSend?: string) => {
     const query = textToSend || input;

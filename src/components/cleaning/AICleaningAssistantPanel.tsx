@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AICleaningSuggestion } from '../../types/cleaning';
-import { Bot, Sparkles, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Bot, Sparkles, CheckCircle2, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface Props {
   suggestions: AICleaningSuggestion[];

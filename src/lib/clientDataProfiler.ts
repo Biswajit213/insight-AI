@@ -67,7 +67,7 @@ export function evaluateRuleOnRow(
 
   if (raw === null || raw === undefined) return false;
 
-  const numVal = Number(String(raw).replace(/[\$,\s₹]/g, ''));
+  const numVal = Number(String(raw).replace(/[$,\s₹]/g, ''));
   const targetNum = Number(rule.value);
 
   switch (rule.operator) {
@@ -208,7 +208,7 @@ export function profileDatasetClientSide(
     let numCount = 0;
     const numVals: number[] = [];
     for (const v of nonNull) {
-      const clean = String(v).replace(/[\$,\s₹]/g, '').replace(/%$/, '');
+      const clean = String(v).replace(/[$,\s₹]/g, '').replace(/%$/, '');
       const n = Number(clean);
       if (String(v).trim() !== '' && !isNaN(n)) {
         numCount++;

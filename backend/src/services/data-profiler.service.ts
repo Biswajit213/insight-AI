@@ -105,7 +105,7 @@ export class DataProfilerService {
       for (const val of nonNullRaw) {
         const str = String(val).trim();
         // Check number
-        const cleanNumStr = str.replace(/[\$,\s₹]/g, '').replace(/%$/, '');
+        const cleanNumStr = str.replace(/[$,\s₹]/g, '').replace(/%$/, '');
         const parsedNum = Number(cleanNumStr);
         if (str !== '' && !isNaN(parsedNum)) {
           numCount++;
@@ -122,7 +122,7 @@ export class DataProfilerService {
         if (!isNaN(dateParsed) && str.length >= 6 && /\d/.test(str)) {
           dateCount++;
           dateValues.push(new Date(dateParsed));
-        } else if (/^\d{2,4}[-\/]\d{1,2}[-\/]\d{2,4}$/.test(str)) {
+        } else if (/^\d{2,4}[-/]\d{1,2}[-/]\d{2,4}$/.test(str)) {
           invalidDateCount++;
         }
       }
@@ -138,7 +138,7 @@ export class DataProfilerService {
       }
 
       // Check currency/percentage specific type flags
-      const isCurrency = nonNullRaw.some((v) => /[\$₹€£]/.test(String(v)));
+      const isCurrency = nonNullRaw.some((v) => /[$₹€£]/.test(String(v)));
       const isPercentage = nonNullRaw.some((v) => /%$/.test(String(v)));
       if (detectedType === 'NUMBER' && isCurrency) detectedType = 'CURRENCY';
       if (detectedType === 'NUMBER' && isPercentage) detectedType = 'PERCENTAGE';

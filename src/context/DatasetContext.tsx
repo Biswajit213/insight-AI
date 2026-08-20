@@ -23,12 +23,10 @@ interface DatasetContextType {
 
 const DatasetContext = createContext<DatasetContextType | undefined>(undefined);
 
-// localStorage base keys — scoped per user: key + "::" + userId
 const KEY_METADATA = 'insightai_user_datasets_metadata';
 const KEY_DATA     = 'insightai_user_datasets_data';
 const KEY_HISTORY  = 'insightai_user_upload_history';
 
-/** Shape returned by backend GET /api/v1/upload-history */
 interface ApiHistoryEntry {
   id: string;
   dataset_id: string | null;
@@ -42,7 +40,6 @@ interface ApiHistoryEntry {
   status: string;
 }
 
-/** Shape returned by backend GET /api/v1/datasets */
 interface ApiDataset {
   id: string;
   name: string;
@@ -90,30 +87,45 @@ function apiHistoryToFrontend(h: ApiHistoryEntry): UploadHistoryEntry {
   };
 }
 
-/** Load datasets + history metadata from localStorage for the current user */
-function loadLocalForUser() {
+function loadLocalForUser(forUserId?: string) {
+  const activeId = forUserId || getActiveUserId();
+  const scopedGet = <T,>(baseKey: string): T | null => {
+    try {
+      const raw = localStorage.getItem(`${baseKey}::${activeId}`);
+      if (raw) return JSON.parse(raw) as T;
+    } catch { /* ignore */ }
+    return null;
+  };
   return {
-    datasets:      userStorageGet<Dataset[]>(KEY_METADATA) ?? [],
-    customData:    userStorageGet<Record<string, DatasetData>>(KEY_DATA) ?? {},
-    uploadHistory: userStorageGet<UploadHistoryEntry[]>(KEY_HISTORY) ?? [],
+    datasets:      scopedGet<Dataset[]>(KEY_METADATA) ?? [],
+    customData:    scopedGet<Record<string, DatasetData>>(KEY_DATA) ?? {},
+    uploadHistory: scopedGet<UploadHistoryEntry[]>(KEY_HISTORY) ?? [],
   };
 }
 
 export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [userId, setUserId]             = useState<string>(() => getActiveUserId());
-  const [datasets, setDatasets]         = useState<Dataset[]>([]);
-  const [customData, setCustomData]     = useState<Record<string, DatasetData>>({});
+  const [, setUserId]                     = useState<string>(() => getActiveUserId());
+  const [datasets, setDatasets]           = useState<Dataset[]>([]);
+  const [customData, setCustomData]       = useState<Record<string, DatasetData>>({});
   const [uploadHistory, setUploadHistory] = useState<UploadHistoryEntry[]>([]);
-  const [loading, setLoading]           = useState(false);
+  const [loading, setLoading]             = useState(false);
 
-  // Prevent duplicate concurrent fetches
-  const fetchingRef = useRef(false);
+  // Track whether current state was hydrated from server (to prevent localStorage
+  // persist effects from overwriting server data with stale empty arrays)
+  const serverHydratedRef = useRef(false);
+  const fetchingRef       = useRef(false);
 
-  // ── Fetch from backend (datasets list + upload history) ──────────────────
+  // ── Core server sync ──────────────────────────────────────────────────────
   const refreshFromServer = useCallback(async () => {
     const token = localStorage.getItem('insightai_token');
     if (!token || token === 'guest') return;
-    if (fetchingRef.current) return;
+
+    // Reset fetchingRef before checking to avoid permanent lockout
+    if (fetchingRef.current) {
+      // Wait briefly then retry once — handles race conditions at login
+      await new Promise((r) => setTimeout(r, 300));
+      if (fetchingRef.current) return;
+    }
 
     fetchingRef.current = true;
     setLoading(true);
@@ -124,50 +136,90 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
         apiClient.get<{ success: boolean; data: ApiHistoryEntry[] }>('/api/v1/upload-history'),
       ]);
 
+      let serverDatasetsLoaded = false;
+      let serverHistoryLoaded  = false;
+
       if (datasetsRes.status === 'fulfilled' && datasetsRes.value?.data) {
         const serverDatasets = datasetsRes.value.data.map(apiDatasetToFrontend);
-        setDatasets(serverDatasets);
-        userStorageSet(KEY_METADATA, serverDatasets);
+        // Merge: keep local-only datasets (those not in server DB) plus server ones
+        setDatasets((prev) => {
+          const serverIds = new Set(serverDatasets.map((d) => d.id));
+          const localOnly = prev.filter((d) => !serverIds.has(d.id));
+          const merged    = [...serverDatasets, ...localOnly];
+          userStorageSet(KEY_METADATA, merged);
+          return merged;
+        });
+        serverDatasetsLoaded = true;
       }
 
       if (historyRes.status === 'fulfilled' && historyRes.value?.data) {
         const serverHistory = historyRes.value.data.map(apiHistoryToFrontend);
-        setUploadHistory(serverHistory);
-        userStorageSet(KEY_HISTORY, serverHistory);
+        // Merge: server history is authoritative; keep local-only entries not yet saved to DB
+        setUploadHistory((prev) => {
+          const serverIds   = new Set(serverHistory.map((h) => h.id));
+          // Local entries that aren't in server yet (freshly uploaded, not yet synced)
+          const localOnly   = prev.filter((h) => !serverIds.has(h.id) && h.id.startsWith('hist_'));
+          const merged      = [...serverHistory, ...localOnly];
+          userStorageSet(KEY_HISTORY, merged);
+          return merged;
+        });
+        serverHistoryLoaded = true;
+      }
+
+      if (serverDatasetsLoaded || serverHistoryLoaded) {
+        serverHydratedRef.current = true;
       }
     } catch {
-      // Server unavailable — keep whatever is in localStorage
+      // Server unavailable — localStorage data is already loaded, nothing to do
     } finally {
       setLoading(false);
       fetchingRef.current = false;
     }
   }, []);
 
-  // ── Initial load: localStorage first (instant), then server sync ─────────
+  // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
-    const { datasets: ds, customData: cd, uploadHistory: hist } = loadLocalForUser();
-    setDatasets(ds);
-    setCustomData(cd);
-    setUploadHistory(hist);
+    const token = localStorage.getItem('insightai_token');
 
-    // Hydrate from server in the background
-    refreshFromServer();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Re-load when user changes (login / logout / account switch) ───────────
-  useEffect(() => {
-    const handleUserChange = () => {
-      const newUserId = getActiveUserId();
-      setUserId(newUserId);
-
-      // Load local data for new user immediately
+    if (token && token !== 'guest') {
+      // Has a token — load localStorage immediately, then fetch from server
       const { datasets: ds, customData: cd, uploadHistory: hist } = loadLocalForUser();
       setDatasets(ds);
       setCustomData(cd);
       setUploadHistory(hist);
-
-      // Then refresh from server
+      // Fetch fresh data from server (this will MERGE with localStorage data)
       refreshFromServer();
+    }
+    // If no token, stay empty — will load when user logs in
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── React to login / logout / account switch ──────────────────────────────
+  useEffect(() => {
+    const handleUserChange = () => {
+      const newUserId = getActiveUserId();
+      setUserId(newUserId);
+      serverHydratedRef.current = false;
+
+      if (!newUserId || newUserId === 'guest') {
+        // Logged out — clear state
+        setDatasets([]);
+        setCustomData({});
+        setUploadHistory([]);
+        return;
+      }
+
+      // Load localStorage for the new user immediately (instant UI)
+      const { datasets: ds, customData: cd, uploadHistory: hist } = loadLocalForUser(newUserId);
+      setDatasets(ds);
+      setCustomData(cd);
+      setUploadHistory(hist);
+
+      // Then fetch fresh data from server — this will merge and update
+      // Use setTimeout to ensure the token is fully set in localStorage before fetch
+      setTimeout(() => {
+        fetchingRef.current = false; // reset lock so re-login always fetches
+        refreshFromServer();
+      }, 100);
     };
 
     window.addEventListener('insightai_user_updated', handleUserChange);
@@ -178,34 +230,51 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [refreshFromServer]);
 
-  // ── Persist changes back to localStorage ─────────────────────────────────
-  useEffect(() => { userStorageSet(KEY_METADATA, datasets); }, [datasets]);
-  useEffect(() => { userStorageSet(KEY_DATA, customData); }, [customData]);
-  useEffect(() => { userStorageSet(KEY_HISTORY, uploadHistory); }, [uploadHistory]);
+  // ── Persist to localStorage — ONLY when not server-hydrating ─────────────
+  // This prevents the empty initial state from overwriting server-loaded data.
+  const persistDatasetsRef  = useRef(false);
+  const persistHistoryRef   = useRef(false);
+  const persistCustomRef    = useRef(false);
 
-  // ── addDataset — saves to local state AND persists history to DB ──────────
+  useEffect(() => {
+    if (!persistDatasetsRef.current) { persistDatasetsRef.current = true; return; }
+    // Only persist non-empty data, or if server has hydrated (safe to write empty)
+    if (datasets.length > 0 || serverHydratedRef.current) {
+      userStorageSet(KEY_METADATA, datasets);
+    }
+  }, [datasets]);
+
+  useEffect(() => {
+    if (!persistCustomRef.current) { persistCustomRef.current = true; return; }
+    userStorageSet(KEY_DATA, customData);
+  }, [customData]);
+
+  useEffect(() => {
+    if (!persistHistoryRef.current) { persistHistoryRef.current = true; return; }
+    if (uploadHistory.length > 0 || serverHydratedRef.current) {
+      userStorageSet(KEY_HISTORY, uploadHistory);
+    }
+  }, [uploadHistory]);
+
+  // ── addDataset ────────────────────────────────────────────────────────────
   const addDataset = useCallback((newDataset: Dataset, columns: DataColumn[], rows: DataRow[]) => {
     setDatasets((prev) => {
-      // Avoid duplicates if server sync already added it
       if (prev.some((d) => d.id === newDataset.id)) return prev;
       return [newDataset, ...prev];
     });
 
-    setCustomData((prev) => ({
-      ...prev,
-      [newDataset.id]: { columns, rows },
-    }));
+    setCustomData((prev) => ({ ...prev, [newDataset.id]: { columns, rows } }));
 
     const historyEntry: UploadHistoryEntry = {
-      id: `hist_${Date.now()}_${newDataset.id}`,
-      datasetId: newDataset.id,
-      fileName: newDataset.fileName,
-      datasetName: newDataset.name,
-      uploadedAt: newDataset.lastUpdated,
-      sizeBytes: newDataset.sizeBytes,
-      rows: newDataset.rows,
-      columns: newDataset.columns,
-      status: 'connected',
+      id:           `hist_${Date.now()}_${newDataset.id}`,
+      datasetId:    newDataset.id,
+      fileName:     newDataset.fileName,
+      datasetName:  newDataset.name,
+      uploadedAt:   newDataset.lastUpdated,
+      sizeBytes:    newDataset.sizeBytes,
+      rows:         newDataset.rows,
+      columns:      newDataset.columns,
+      status:       'connected',
       missingValues: newDataset.missingValues || 0,
     };
 
@@ -214,7 +283,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return [historyEntry, ...prev];
     });
 
-    // Persist history entry to the database so it survives re-login
+    // Persist to DB
     const token = localStorage.getItem('insightai_token');
     if (token && token !== 'guest') {
       apiClient.post('/api/v1/upload-history', {
@@ -227,9 +296,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
         column_count:  newDataset.columns,
         missing_values: newDataset.missingValues || 0,
         status:        'connected',
-      }).catch(() => {
-        // DB unavailable — already saved in localStorage, safe to ignore
-      });
+      }).catch(() => {});
     }
   }, []);
 
@@ -241,7 +308,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const data = customData[id];
       if (data.rows && data.rows.length > 0) {
         if (!data.columns || data.columns.length === 0) {
-          const fields = Object.keys(data.rows[0]);
+          const fields    = Object.keys(data.rows[0]);
           const autoCols: DataColumn[] = fields.map((f) => {
             const val = data.rows[0][f];
             const type = typeof val === 'number' ? 'number' : typeof val === 'boolean' ? 'boolean' : 'string';
@@ -260,20 +327,20 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
         : ['ID', 'Category', 'Value', 'Status', 'Timestamp'];
 
       const autoColumns: DataColumn[] = fields.map((f) => ({
-        name: f,
-        type: (meta.dataTypes?.[f] === 'number' ? 'number' : meta.dataTypes?.[f] === 'date' ? 'date' : 'string') as any,
-        nullCount: 0,
+        name:        f,
+        type:        (meta.dataTypes?.[f] === 'number' ? 'number' : meta.dataTypes?.[f] === 'date' ? 'date' : 'string') as any,
+        nullCount:   0,
         uniqueCount: meta.rows || 10,
-        sample: ['Sample 1', 'Sample 2', 'Sample 3'],
+        sample:      ['Sample 1', 'Sample 2', 'Sample 3'],
       }));
 
       const autoRows: DataRow[] = Array.from({ length: Math.max(meta.rows || 10, 15) }).map((_, idx) => {
         const row: DataRow = {};
         fields.forEach((f) => {
           const t = meta.dataTypes?.[f] || 'string';
-          if (t === 'number') row[f] = Math.round(Math.random() * 800 + 100);
-          else if (t === 'date') row[f] = new Date().toISOString().split('T')[0];
-          else row[f] = `${f}_${idx + 1}`;
+          if (t === 'number')     row[f] = Math.round(Math.random() * 800 + 100);
+          else if (t === 'date')  row[f] = new Date().toISOString().split('T')[0];
+          else                    row[f] = `${f}_${idx + 1}`;
         });
         return row;
       });
@@ -288,8 +355,8 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCustomData((prev) => ({ ...prev, [id]: { columns: newColumns, rows: newRows } }));
 
     let missingValues = 0;
-    const rowStrings = new Set<string>();
-    let duplicates = 0;
+    const rowStrings  = new Set<string>();
+    let duplicates    = 0;
 
     for (const r of newRows) {
       const str = JSON.stringify(r);
@@ -303,7 +370,6 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const dataTypes: Record<string, string> = {};
     newColumns.forEach((c) => { dataTypes[c.name] = c.type; });
-
     const estBytes = Math.round(JSON.stringify(newRows).length * 1.1);
 
     setDatasets((prev) => prev.map((ds) =>
@@ -316,12 +382,11 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const deleteDataset = useCallback((id: string) => {
     setDatasets((prev) => prev.filter((d) => d.id !== id));
     setCustomData((prev) => { const next = { ...prev }; delete next[id]; return next; });
-    // History entries are intentionally kept for audit purposes
   }, []);
 
   const clearUploadHistory = useCallback(() => {
     setUploadHistory([]);
-    // Also clear from the database
+    serverHydratedRef.current = true; // allow persist to write empty
     const token = localStorage.getItem('insightai_token');
     if (token && token !== 'guest') {
       apiClient.delete('/api/v1/upload-history').catch(() => {});

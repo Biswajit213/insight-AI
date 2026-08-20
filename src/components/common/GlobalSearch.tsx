@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Search, X, LayoutDashboard, Database, FileText, Sparkles, AlertTriangle, Settings, ArrowRight } from 'lucide-react';
 import { useDatasets } from '../../context/DatasetContext';
 import { reports } from '../../data/reports';
-import { cn } from '../../lib/utils';
 
 const quickLinks = [
   { label: 'Dashboard', path: '/app', icon: <LayoutDashboard size={16} />, type: 'page' },

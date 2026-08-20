@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Download, FileText, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { X, Download, FileText, ShieldCheck } from 'lucide-react';
 import type { DataQualityScanResult, ValidationReport, CleaningOperationRecord } from '../../types/cleaning';
 
 interface Props {
@@ -18,7 +18,7 @@ export function DataQualityReportModal({
   datasetName,
   scanResult,
   validation,
-  history,
+  history: _history,
   onExport,
 }: Props) {
   if (!isOpen || !scanResult) return null;

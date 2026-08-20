@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BarChart3, Sparkles, Download, Edit, FileSpreadsheet,
-  Search, ChevronDown, ChevronUp, History, Clock, CheckCircle2
+  Search, ChevronDown, ChevronUp, History, Clock, CheckCircle2, UploadCloud
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { Header } from '../components/layout/Header';
@@ -88,10 +88,31 @@ export default function DatasetDetail() {
   };
 
   if (!dataset) {
+    // Dataset ID is valid (from history) but data isn't loaded in this session.
+    // Show a helpful prompt to re-upload rather than a dead error.
     return (
-      <div className="p-6">
-        <p className="text-slate-500">Dataset not found.</p>
-        <Button variant="secondary" size="sm" onClick={() => navigate('/data-sources')}>Back to Data Sources</Button>
+      <div className="flex flex-col h-full">
+        <Header title="Dataset Detail" />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-md w-full text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center mx-auto">
+              <span className="text-2xl">📂</span>
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Dataset Not in Current Session</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              This dataset was uploaded in a previous session. The file data is stored locally in your browser
+              and needs to be re-uploaded to view or edit it.
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <Button variant="secondary" size="sm" onClick={() => navigate('/app/datasets')}>
+                ← Back to Data Sources
+              </Button>
+              <Button variant="primary" size="sm" icon={<UploadCloud size={15} />} onClick={() => navigate('/app/datasets')}>
+                Re-upload Dataset
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Database, BarChart3, Sparkles, FileText,

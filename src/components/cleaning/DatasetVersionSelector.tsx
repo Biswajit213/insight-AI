@@ -1,6 +1,6 @@
 import React from 'react';
 import type { DatasetVersionItem } from '../../types/cleaning';
-import { GitBranch, ChevronDown, Check } from 'lucide-react';
+import { GitBranch } from 'lucide-react';
 
 interface Props {
   versions: DatasetVersionItem[];
@@ -9,7 +9,6 @@ interface Props {
 }
 
 export function DatasetVersionSelector({ versions, activeVersionId, onSelectVersion }: Props) {
-  const activeVer = versions.find((v) => v.id === activeVersionId) || versions[0];
 
   return (
     <div className="relative inline-block text-left">

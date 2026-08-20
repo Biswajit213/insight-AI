@@ -23,6 +23,7 @@ export default function DataSources() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [missingDatasetName, setMissingDatasetName] = useState<string | null>(null);
 
   const [uploadedFileInfo, setUploadedFileInfo] = useState<{
     id?: string;
@@ -32,6 +33,44 @@ export default function DataSources() {
     columns: number;
     missing: number;
   } | null>(null);
+
+  /**
+   * Resolve a dataset ID from a history entry.
+   * Priority:
+   * 1. Use datasetId directly if it's a non-empty string (even if dataset isn't
+   *    loaded in context — the detail page handles missing data gracefully)
+   * 2. Fallback: find by name/filename in datasets context
+   * Returns null ONLY if both datasetId is empty AND no name match exists.
+   */
+  const resolveDatasetId = (item: { datasetId: string; datasetName: string; fileName: string }): string | null => {
+    // A valid non-empty datasetId is always navigable
+    if (item.datasetId && item.datasetId.trim() !== '') {
+      return item.datasetId;
+    }
+    // datasetId is empty (old null entries) — try name/filename match
+    const byName = datasets.find(
+      (d) => d.name === item.datasetName || d.fileName === item.fileName
+    );
+    return byName?.id ?? null;
+  };
+
+  const handleHistoryEdit = (item: { datasetId: string; datasetName: string; fileName: string }) => {
+    const dsId = resolveDatasetId(item);
+    if (dsId) {
+      navigate(`/app/datasets/${dsId}/edit`);
+    } else {
+      setMissingDatasetName(item.datasetName || item.fileName);
+    }
+  };
+
+  const handleHistoryView = (item: { datasetId: string; datasetName: string; fileName: string }) => {
+    const dsId = resolveDatasetId(item);
+    if (dsId) {
+      navigate(`/app/datasets/${dsId}`);
+    } else {
+      setMissingDatasetName(item.datasetName || item.fileName);
+    }
+  };
 
   const processFile = (file: File) => {
     setUploadStatus('uploading');
@@ -125,7 +164,7 @@ export default function DataSources() {
             dataTypes[c.name] = c.type;
           });
 
-          const newDatasetId = `ds_${Date.now()}`;
+          const newDatasetId = crypto.randomUUID(); // real UUID — works with DB uuid columns
           const newDataset: Dataset = {
             id: newDatasetId,
             name: file.name.replace(/\.[^/.]+$/, ''),
@@ -353,6 +392,23 @@ export default function DataSources() {
             )}
           </div>
 
+          {/* Missing dataset warning */}
+          {missingDatasetName && (
+            <div className="mx-5 mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <span className="text-amber-500 text-sm mt-0.5">⚠️</span>
+                <div>
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Dataset not available</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                    "<strong>{missingDatasetName}</strong>" was previously uploaded but the data is no longer in your current session.
+                    Re-upload the file to view or edit it again.
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setMissingDatasetName(null)} className="text-amber-400 hover:text-amber-600 text-xs flex-shrink-0">✕</button>
+            </div>
+          )}
+
           {uploadHistory.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-400 dark:text-slate-500">
               No upload activity history logged. Upload a CSV file above to record activity history entries.
@@ -372,59 +428,75 @@ export default function DataSources() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                  {uploadHistory.map((item, i) => (
-                    <motion.tr
-                      key={item.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
-                    >
-                      <td className="table-cell">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 flex-shrink-0">
-                            <FileText size={14} />
+                  {uploadHistory.map((item, i) => {
+                    const dsId = resolveDatasetId(item);
+                    const isAvailable = !!dsId;
+                    return (
+                      <motion.tr
+                        key={item.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.04 }}
+                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                      >
+                        <td className="table-cell">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 flex-shrink-0">
+                              <FileText size={14} />
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-800 dark:text-slate-200">{item.fileName}</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500">{item.datasetName}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-slate-800 dark:text-slate-200">{item.fileName}</p>
-                            <p className="text-xs text-slate-400 dark:text-slate-500">{item.datasetName}</p>
+                        </td>
+                        <td className="table-cell text-xs text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={12} className="text-slate-400" />
+                            <span>{formatDate(item.uploadedAt)}</span>
                           </div>
-                        </div>
-                      </td>
-                      <td className="table-cell text-xs text-slate-500 dark:text-slate-400">
-                        <div className="flex items-center gap-1.5">
-                          <Clock size={12} className="text-slate-400" />
-                          <span>{formatDate(item.uploadedAt)}</span>
-                        </div>
-                      </td>
-                      <td className="table-cell text-right font-medium">{formatNumber(item.rows)}</td>
-                      <td className="table-cell text-right">{item.columns}</td>
-                      <td className="table-cell text-right">{formatBytes(item.sizeBytes)}</td>
-                      <td className="table-cell">
-                        <StatusBadge status={item.status} />
-                      </td>
-                      <td className="table-cell text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button
-                            variant="secondary"
-                            size="xs"
-                            icon={<Edit size={13} />}
-                            onClick={() => navigate(`/app/datasets/${item.datasetId}/edit`)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            icon={<Eye size={13} />}
-                            onClick={() => navigate(`/app/datasets/${item.datasetId}`)}
-                          >
-                            View
-                          </Button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
+                        </td>
+                        <td className="table-cell text-right font-medium">{formatNumber(item.rows)}</td>
+                        <td className="table-cell text-right">{item.columns}</td>
+                        <td className="table-cell text-right">{formatBytes(item.sizeBytes)}</td>
+                        <td className="table-cell">
+                          <StatusBadge status={item.status} />
+                        </td>
+                        <td className="table-cell text-right">
+                          <div className="flex items-center gap-1 justify-end">
+                            {isAvailable ? (
+                              <>
+                                <Button
+                                  variant="secondary"
+                                  size="xs"
+                                  icon={<Edit size={13} />}
+                                  onClick={() => handleHistoryEdit(item)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="xs"
+                                  icon={<Eye size={13} />}
+                                  onClick={() => handleHistoryView(item)}
+                                >
+                                  View
+                                </Button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => setUploadOpen(true)}
+                                className="text-[11px] text-blue-500 hover:underline font-medium whitespace-nowrap"
+                                title="Dataset not in session — re-upload to access"
+                              >
+                                Re-upload ↑
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

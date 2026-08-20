@@ -16,6 +16,13 @@ export interface UploadHistoryRecord {
   created_at: string;
 }
 
+/** Returns the value only if it's a valid UUID, otherwise null */
+function toUUIDOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(value) ? value : null;
+}
+
 export class UploadHistoryService {
   /**
    * Record a new upload activity entry for a user.
@@ -37,7 +44,7 @@ export class UploadHistoryService {
         .from('upload_history')
         .insert({
           user_id: params.userId,
-          dataset_id: params.datasetId,
+          dataset_id: toUUIDOrNull(params.datasetId), // null-safe: non-UUID ids become null
           file_name: params.fileName,
           dataset_name: params.datasetName,
           uploaded_at: params.uploadedAt,

@@ -14,12 +14,14 @@ import type {
 const API_BASE_URL = '/api/v1';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('insightai_token') || 'mock-token';
-  const headers = {
+  const token = localStorage.getItem('insightai_token') || '';
+  const email = localStorage.getItem('insightai_user_email') || '';
+
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-test-user-id': 'usr-001',
-    ...(options?.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(email ? { 'x-user-email': email } : {}),
+    ...(options?.headers as Record<string, string> || {}),
   };
 
   const response = await fetch(`${API_BASE_URL}${url}`, {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { DataQualityIssueItem } from '../../types/cleaning';
-import { AlertOctagon, AlertTriangle, Info, CheckCircle, Wrench, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, Info, Wrench, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Props {
   issues: DataQualityIssueItem[];

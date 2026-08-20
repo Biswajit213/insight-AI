@@ -125,7 +125,7 @@ export default function ExcelEditor() {
   const [colResizeDrag, setColResizeDrag] = useState<ColResizeDrag | null>(null);
 
   // ── Clipboard ────────────────────────────────────────────────────────────────
-  const [clipboard, setClipboard] = useState<{ values: (string | number | null)[][]; rows: number; cols: number } | null>(null);
+  const [clipboard, setClipboard] = useState<{ values: (string | number | boolean | null)[][]; rows: number; cols: number } | null>(null);
 
   // ── Column rename modal ──────────────────────────────────────────────────────
   const [renamingColIndex, setRenamingColIndex] = useState<number | null>(null);
@@ -167,7 +167,7 @@ export default function ExcelEditor() {
       setColWidths({});
       setSelectionRange(null);
     }
-  }, [dataset?.id]);
+  }, [dataset, getDatasetData]);
 
   // ── Column width helper ──────────────────────────────────────────────────────
   const getColWidth = useCallback((cIdx: number) => colWidths[cIdx] ?? DEFAULT_COL_WIDTH, [colWidths]);
@@ -476,12 +476,6 @@ export default function ExcelEditor() {
         const newWidth = Math.max(60, colResizeDrag.startWidth + delta);
         setColWidths((prev) => ({ ...prev, [colResizeDrag.colIdx]: newWidth }));
       }
-
-      // Fill handle drag — determine direction based on movement from fill start
-      if (isDraggingFill && fillStartRef.current) {
-        const { r: startR, c: startC } = fillStartRef.current;
-        // We rely on cell mouseenter below for endR/endC; direction determined by aspect ratio
-      }
     };
 
     const onMouseUp = () => {
@@ -533,9 +527,9 @@ export default function ExcelEditor() {
     const rowRange = rangeMinMax(sel.anchor.r, sel.focus.r);
     const colRange = rangeMinMax(sel.anchor.c, sel.focus.c);
 
-    const values: (string | number | null)[][] = [];
+    const values: (string | number | boolean | null)[][] = [];
     for (let r = rowRange.min; r <= rowRange.max; r++) {
-      const rowVals: (string | number | null)[] = [];
+      const rowVals: (string | number | boolean | null)[] = [];
       for (let c = colRange.min; c <= colRange.max; c++) {
         const colName = columns[c]?.name;
         rowVals.push(colName ? (rows[r]?.[colName] ?? null) : null);

@@ -17,6 +17,9 @@ const envSchema = z.object({
   MISTRAL_API_KEY: z.string().default('mock-mistral-key'),
   MISTRAL_MODEL: z.string().default('mistral-large-latest'),
   
+  GOOGLE_CLIENT_ID: z.string().default(''),
+  GOOGLE_CLIENT_SECRET: z.string().default(''),
+
   MAX_FILE_SIZE_MB: z.string().transform((val) => parseInt(val, 10)).default('50'),
   RATE_LIMIT_WINDOW_MS: z.string().transform((val) => parseInt(val, 10)).default('900000'),
   RATE_LIMIT_MAX_REQUESTS: z.string().transform((val) => parseInt(val, 10)).default('100'),

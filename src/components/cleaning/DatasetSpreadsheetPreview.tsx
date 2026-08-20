@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Eye, EyeOff, ArrowUpDown, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { Search, EyeOff, ArrowUpDown, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import type { DetailedColumnProfile } from '../../types/cleaning';
 
 interface Props {

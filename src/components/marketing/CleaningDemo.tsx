@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ShieldCheck, ArrowRight, CheckCircle2, AlertOctagon, RefreshCw } from 'lucide-react';
+import { Sparkles, ShieldCheck, CheckCircle2, AlertOctagon, RefreshCw } from 'lucide-react';
 
 export function CleaningDemo() {
   const navigate = useNavigate();

@@ -105,7 +105,6 @@ export function generateDeterministicInsights(
   const catCols = columns.filter((c) => c.type === 'string' || c.type === 'date').map((c) => c.name);
 
   const primaryNumCol = numCols[0] || 'Value';
-  const secondaryNumCol = numCols[1] || numCols[0] || 'Quantity';
   const primaryCatCol = catCols[0] || 'Category';
 
   const numValues = rows.map((r) => Number(r[primaryNumCol])).filter((v) => !isNaN(v));

@@ -7,7 +7,7 @@ import { DatasetProvider } from './context/DatasetContext';
 import { ReportProvider } from './context/ReportContext';
 import { PageSkeleton } from './components/common/Skeleton';
 import { Header } from './components/layout/Header';
-import { ProfileSettings, SecuritySettings, AppearanceSettings } from './pages/Settings';
+import Settings, { ProfileSettings, SecuritySettings, AppearanceSettings } from './pages/Settings';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { cn } from './lib/utils';
 import { supabase } from './lib/supabase';
@@ -83,7 +83,6 @@ const AIInsights = lazy(() => import('./pages/AIInsights'));
 const Reports = lazy(() => import('./pages/Reports'));
 const ReportDetail = lazy(() => import('./pages/ReportDetail'));
 const Anomalies = lazy(() => import('./pages/Anomalies'));
-const Settings = lazy(() => import('./pages/Settings'));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },

@@ -3,6 +3,7 @@ import { Report } from '../types/report';
 import { DatasetService } from './dataset.service';
 import { AIService } from './ai.service';
 import { NotFoundError } from '../utils/errors';
+import { logger } from '../utils/logger';
 
 export class ReportService {
   public static async createReport(
@@ -35,8 +36,8 @@ export class ReportService {
         description: report.description,
         status: report.status,
       });
-    } catch (_e) {
-      // Memory fallback
+    } catch (err) {
+      logger.warn('Failed to insert report into database, using fallback:', err);
     }
 
     // Trigger async generation
@@ -85,8 +86,8 @@ export class ReportService {
         .single();
 
       if (!error && data) return data as Report;
-    } catch (_e) {
-      // fallback
+    } catch (err) {
+      logger.warn('Failed to update report in database:', err);
     }
 
     return {
@@ -110,8 +111,8 @@ export class ReportService {
         .order('created_at', { ascending: false });
 
       if (!error && data) return data as Report[];
-    } catch (_e) {
-      // DB error
+    } catch (err) {
+      logger.warn('Failed to fetch user reports from database:', err);
     }
     return [];
   }

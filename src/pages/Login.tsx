@@ -7,7 +7,6 @@ import { Eye, EyeOff, Sparkles, TrendingUp, Users, Shield, Loader2 } from 'lucid
 import { motion } from 'framer-motion';
 import { Button } from '../components/common/Button';
 import { AppLogo } from '../components/common/AppLogo';
-
 import { signInWithGoogle } from '../lib/supabase';
 import { storeLoginData } from '../services/authApi';
 
@@ -32,39 +31,48 @@ export default function Login() {
 
   const onSubmit = async (data: FormData) => {
     await new Promise((r) => setTimeout(r, 600));
-    const userEmail = data.email.trim();
+    const userEmail = data.email.trim().toLowerCase();
     const namePart = userEmail.split('@')[0].replace(/[._-]/g, ' ');
     const computedName =
       namePart.split(' ').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') ||
       'Analytics User';
 
-    const token = 'usr-' + Date.now();
-
+    // Call backend — which now looks up existing profile by email first,
+    // guaranteeing the same user_id is returned on every login.
     const dbProfile = await storeLoginData({
       email: userEmail,
       fullName: computedName,
-      userId: token,
       provider: 'email',
     });
 
-    const activeUserId = dbProfile?.user_id || dbProfile?.id || token;
+    // ALWAYS use the DB-returned user_id as the token.
+    // Never fall back to a locally-generated ID — that causes mismatches.
+    const activeUserId = dbProfile?.user_id || dbProfile?.id;
 
-    localStorage.setItem('insightai_token', activeUserId);
-    localStorage.setItem('insightai_user_email', userEmail);
-    localStorage.setItem('insightai_user_name', computedName);
-    localStorage.removeItem('insightai_user_avatar');
+    if (!activeUserId) {
+      // Backend unreachable — store email so x-user-email header still works
+      localStorage.setItem('insightai_user_email', userEmail);
+      localStorage.setItem('insightai_user_name', computedName);
+      localStorage.removeItem('insightai_user_avatar');
+      // Use a deterministic offline token based on email (won't work for DB
+      // queries but allows local-only usage)
+      const offlineToken = btoa(userEmail).replace(/=/g, '');
+      localStorage.setItem('insightai_token', offlineToken);
+    } else {
+      localStorage.setItem('insightai_token', activeUserId);
+      localStorage.setItem('insightai_user_email', userEmail);
+      localStorage.setItem('insightai_user_name', dbProfile?.full_name || computedName);
+      localStorage.removeItem('insightai_user_avatar');
+    }
+
     window.dispatchEvent(new Event('insightai_user_updated'));
     navigate(returnTo);
   };
 
-  // Triggers real Google OAuth — opens the browser's native account picker.
-  // On return, supabase.onAuthStateChange fires, captures real Google profile
-  // (name, email, avatar), saves it to localStorage + database automatically.
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
       await signInWithGoogle(returnTo);
-      // Browser redirects to Google — execution stops here.
     } catch {
       setGoogleLoading(false);
     }

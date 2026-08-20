@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CleaningOperationRecord } from '../../types/cleaning';
-import { History, RotateCcw, User, Calendar, Tag } from 'lucide-react';
+import { History, RotateCcw, User, Calendar } from 'lucide-react';
 
 interface Props {
   history: CleaningOperationRecord[];

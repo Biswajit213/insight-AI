@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Report } from '../types';
-import { generateReportContent, type GeneratedReportContent } from '../lib/reportGenerator';
+import type { GeneratedReportContent } from '../lib/reportGenerator';
 import { userStorageGet, userStorageSet, getActiveUserId } from '../lib/userStorage';
 
 interface ReportContextType {

@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../config/supabase';
 import { Insight } from '../types/insight';
 import { DatasetService } from './dataset.service';
 import { NotFoundError } from '../utils/errors';
+import { logger } from '../utils/logger';
 
 export class InsightService {
   public static async generateInsightsForDataset(
@@ -55,8 +56,8 @@ export class InsightService {
           confidence: i.confidence,
         }))
       );
-    } catch (_err) {
-      // Memory fallback handles retrieval
+    } catch (err) {
+      logger.warn('Failed to insert insights to database, using memory fallback:', err);
     }
 
     return generatedInsights;
@@ -69,8 +70,8 @@ export class InsightService {
 
       const { data, error } = await query.order('created_at', { ascending: false });
       if (!error && data) return data as Insight[];
-    } catch (_err) {
-      // fallback
+    } catch (err) {
+      logger.warn('Failed to fetch user insights from database:', err);
     }
 
     return [];

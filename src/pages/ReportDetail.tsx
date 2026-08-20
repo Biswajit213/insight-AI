@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Download, Share2, FileText, Clock, Database, Sparkles,
-  CheckCircle2, Copy, AlertCircle, FileCheck
+  CheckCircle2, Copy, FileCheck
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Header } from '../components/layout/Header';
