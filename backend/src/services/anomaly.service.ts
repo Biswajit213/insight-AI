@@ -24,7 +24,7 @@ export class AnomalyService {
 
     // Run detection on ALL numeric columns (not just the first one)
     const numericCols = columns.filter(
-      (c) => c.data_type === 'number' || c.data_type === 'integer' || c.data_type === 'float'
+      (c) => c.data_type === 'number' || (c.data_type as string) === 'integer' || (c.data_type as string) === 'float'
     );
 
     if (numericCols.length === 0) return [];
@@ -51,7 +51,7 @@ export class AnomalyService {
     }
 
     // Also detect data quality anomalies (missing + duplicates)
-    const dataset = await DatasetService.getDatasetById(userId, datasetId);
+    await DatasetService.getDatasetById(userId, datasetId); // ownership check
     const missingCols = columns.filter((c) => c.missing_values > 0);
 
     for (const col of missingCols) {
