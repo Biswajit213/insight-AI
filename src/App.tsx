@@ -13,6 +13,46 @@ import { cn } from './lib/utils';
 import { supabase } from './lib/supabase';
 
 /**
+ * GlobalAuthHandler — permanently fixes the case where Supabase redirects
+ * to the site root (e.g. https://yourapp.vercel.app/#access_token=...)
+ * instead of /auth/callback. This happens when the redirect URL is not
+ * whitelisted in Supabase's allowed redirect URLs.
+ *
+ * This component detects #access_token= anywhere in the app, processes
+ * the session, and navigates the user to the dashboard automatically.
+ */
+function GlobalAuthHandler() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token=')) {
+      // Supabase landed the user here with a hash token.
+      // Let Supabase parse the hash and establish a session.
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          // Clear the ugly token hash from the URL, then go to dashboard
+          window.history.replaceState(null, '', window.location.pathname);
+          navigate('/app', { replace: true });
+        } else {
+          // Try exchanging the code from hash manually
+          supabase.auth.refreshSession().then(({ data }) => {
+            if (data.session) {
+              window.history.replaceState(null, '', window.location.pathname);
+              navigate('/app', { replace: true });
+            } else {
+              navigate('/login', { replace: true });
+            }
+          });
+        }
+      });
+    }
+  }, [navigate]);
+
+  return null; // renders nothing — purely side-effect
+}
+
+/**
  * AuthCallback — handles the Supabase OAuth redirect.
  * Supabase appends #access_token=... to the redirect URL.
  * This component waits for supabase to parse the hash and establish a session,
@@ -136,6 +176,8 @@ export default function App() {
       <DatasetProvider>
         <ReportProvider>
           <BrowserRouter>
+            {/* Global OAuth hash interceptor — catches Supabase redirects to root */}
+            <GlobalAuthHandler />
             <Suspense fallback={<PageSkeleton />}>
               <Routes>
                 {/* PUBLIC MARKETING WEBSITE */}
